@@ -315,18 +315,3 @@ Potential improvements include:
 - SKY130 PDK
 
 ---
-
-## Project Status
-
-- [x] RTL implementation
-- [x] Unit-level verification
-- [x] CPU integration verification
-- [x] Logic synthesis
-- [x] Floorplanning
-- [x] Placement
-- [x] Clock-tree synthesis
-- [x] Detailed routing
-- [x] Static timing analysis
-- [x] Final GDSII generation
-- [x] Frequency sweep
-- [x] Critical-path analysis
