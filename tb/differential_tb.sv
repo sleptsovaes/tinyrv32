@@ -20,9 +20,7 @@ module differential_tb;
     integer fd;
 
 
-    // =========================================================
     // DUT
-    // =========================================================
 
     cpu_core dut (
         .clk        (clk),
@@ -38,25 +36,19 @@ module differential_tb;
     );
 
 
-    // =========================================================
     // Instruction memory
-    // =========================================================
 
     assign imem_rdata =
         imem[imem_addr[7:2]];
 
 
-    // =========================================================
     // Data memory read
-    // =========================================================
 
     assign dmem_rdata =
         dmem[dmem_addr[7:2]];
 
 
-    // =========================================================
     // Data memory write
-    // =========================================================
 
     always @(posedge clk) begin
         if (dmem_we) begin
@@ -66,16 +58,12 @@ module differential_tb;
     end
 
 
-    // =========================================================
     // Clock
-    // =========================================================
 
     always #5 clk = ~clk;
 
 
-    // =========================================================
     // Test
-    // =========================================================
 
     initial begin
 
@@ -83,58 +71,23 @@ module differential_tb;
         reset = 1;
 
 
-        // -----------------------------------------------------
-        // Initialize simulation memories.
-        //
-        // Register-file initialization is intentionally NOT
-        // performed through hierarchical backdoor access.
-        // The generated RISC-V program initializes every
-        // register that it is allowed to use.
-        // -----------------------------------------------------
 
         for (i = 0; i < 64; i = i + 1) begin
             imem[i] = 32'h00000013;
             dmem[i] = 32'h00000000;
         end
 
-
-        // -----------------------------------------------------
-        // Load generated program.
-        //
-        // generate_program.py writes exactly 64 words,
-        // padding unused locations with ADDI x0,x0,0.
-        // -----------------------------------------------------
-
         $readmemh(
             "verification/generated/program.hex",
             imem
         );
 
-
-        // -----------------------------------------------------
-        // Hold synchronous reset across at least one clock edge.
-        // -----------------------------------------------------
-
         #12;
         reset = 0;
 
-
-        // -----------------------------------------------------
-        // Generated programs currently contain at most about
-        // 55 instructions plus terminal JAL x0,0.
-        //
-        // Once the processor reaches the terminal JAL, PC
-        // remains fixed, so extra cycles do not alter the
-        // architectural state.
-        // -----------------------------------------------------
-
-        repeat (80)
+        repeat (120)
             @(posedge clk);
 
-
-        // -----------------------------------------------------
-        // Dump architectural state for Python comparison.
-        // -----------------------------------------------------
 
         fd = $fopen(
             "verification/generated/rtl_state.txt",
@@ -148,27 +101,12 @@ module differential_tb;
             );
         end
 
-
-        // -----------------------------------------------------
-        // Program counter
-        // -----------------------------------------------------
-
         $fdisplay(
             fd,
             "PC %08x",
-            dut.pc_value
+            dut.exec_pc
         );
 
-
-        // -----------------------------------------------------
-        // Registers
-        //
-        // Current randomized generator intentionally operates
-        // only on x0..x15.
-        //
-        // x16..x31 are not used and are therefore allowed to
-        // remain uninitialized in the RTL simulation.
-        // -----------------------------------------------------
 
         for (i = 0; i < 16; i = i + 1) begin
 
@@ -194,11 +132,6 @@ module differential_tb;
             end
 
         end
-
-
-        // -----------------------------------------------------
-        // Complete data memory
-        // -----------------------------------------------------
 
         for (i = 0; i < 64; i = i + 1) begin
 

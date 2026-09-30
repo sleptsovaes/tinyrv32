@@ -11,9 +11,20 @@ module cpu_core (
     input  logic [31:0] dmem_rdata
 );
 
-    logic [31:0] pc_value;
+    // Pipeline state
+
+    // Stage 1: fetch PC
+    logic [31:0] fetch_pc;
+
+    // Stage 2: instruction + PC
+    logic [31:0] exec_pc;
+    logic [31:0] exec_instr;
+    logic        exec_valid;
+
+
+    // Decode / datapath
+
     logic [31:0] next_pc_value;
-    logic [31:0] instr;
 
     logic [4:0] rs1;
     logic [4:0] rs2;
@@ -41,15 +52,28 @@ module cpu_core (
     logic [31:0] alu_a;
     logic [31:0] alu_b;
     logic [31:0] alu_result;
-    logic rf_we;
+
     logic zero;
 
-    assign instr = imem_rdata;
-    assign imem_addr = pc_value;
+    logic branch_taken;
+    logic redirect;
 
-    assign rs1 = instr[19:15];
-    assign rs2 = instr[24:20];
-    assign rd  = instr[11:7];
+    logic rf_we;
+
+
+    // Stage 1 - Instruction fetch
+
+    assign imem_addr = fetch_pc;
+
+
+    // Stage 2 — Decode
+
+    assign rs1 = exec_instr[19:15];
+    assign rs2 = exec_instr[24:20];
+    assign rd  = exec_instr[11:7];
+
+
+    // ALU
 
     assign alu_a = read_data1;
 
@@ -58,16 +82,36 @@ module cpu_core (
         ? imm
         : read_data2;
 
-    assign zero = (alu_result == 32'd0);
+    assign zero =
+        (alu_result == 32'd0);
 
-    assign dmem_addr  = alu_result;
-    assign dmem_wdata = read_data2;
-    assign dmem_we = mem_write && !reset;
-    assign rf_we   = reg_write && !reset;
+
+    // Memory interface
+
+    assign dmem_addr =
+        alu_result;
+
+    assign dmem_wdata =
+        read_data2;
+
+    // No architectural side effect from an invalid pipeline slot
+    // or while reset is asserted.
+    assign dmem_we =
+        mem_write &&
+        exec_valid &&
+        !reset;
+
+
+    // Register-file writeback
+
+    assign rf_we =
+        reg_write &&
+        exec_valid &&
+        !reset;
 
     assign write_data =
         jump
-        ? (pc_value + 32'd4)
+        ? (exec_pc + 32'd4)
         : (
             mem_to_reg
             ? dmem_rdata
@@ -75,16 +119,65 @@ module cpu_core (
         );
 
 
-    pc pc_unit (
-        .clk(clk),
-        .reset(reset),
-        .next_pc(next_pc_value),
-        .pc_out(pc_value)
-    );
 
+    assign branch_taken =
+        branch &&
+        (
+            (!branch_ne && zero) ||
+            ( branch_ne && !zero)
+        );
+
+    assign redirect =
+        exec_valid &&
+        (
+            jump ||
+            branch_taken
+        );
+
+
+
+    always_ff @(posedge clk) begin
+
+        if (reset) begin
+
+            fetch_pc   <= 32'd0;
+            exec_pc    <= 32'd0;
+            exec_instr <= 32'h00000013;
+            exec_valid <= 1'b0;
+
+        end
+        else begin
+
+            if (redirect) begin
+
+                // Wrong-path fetched instruction is discarded.
+                fetch_pc <= next_pc_value;
+
+                // Insert one bubble into execute stage.
+                exec_valid <= 1'b0;
+
+            end
+            else begin
+
+                // Move fetched instruction into execute stage.
+                exec_pc    <= fetch_pc;
+                exec_instr <= imem_rdata;
+                exec_valid <= 1'b1;
+
+                // Continue sequential fetching.
+                fetch_pc <= fetch_pc + 32'd4;
+
+            end
+
+        end
+
+    end
+
+
+    // Next-PC calculation for instruction in execute stage
 
     next_pc npc_unit (
-        .pc(pc_value),
+        .pc(exec_pc),
         .imm(imm),
 
         .branch(branch),
@@ -95,6 +188,8 @@ module cpu_core (
         .next_pc_value(next_pc_value)
     );
 
+
+    // Register file
 
     regfile rf (
         .clk(clk),
@@ -111,16 +206,20 @@ module cpu_core (
     );
 
 
+    // Immediate generator
+
     imm_gen immediate_unit (
-        .instr(instr),
+        .instr(exec_instr),
         .imm(imm)
     );
 
 
+    // Control unit
+
     control_unit control (
-        .opcode(instr[6:0]),
-        .funct3(instr[14:12]),
-        .funct7(instr[31:25]),
+        .opcode(exec_instr[6:0]),
+        .funct3(exec_instr[14:12]),
+        .funct7(exec_instr[31:25]),
 
         .reg_write(reg_write),
         .alu_src_imm(alu_src_imm),
@@ -137,11 +236,14 @@ module cpu_core (
     );
 
 
+    // ALU
+
     alu alu_unit (
         .a(alu_a),
         .b(alu_b),
         .op(alu_op),
         .result(alu_result)
     );
+
 
 endmodule
