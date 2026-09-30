@@ -7,17 +7,27 @@ def u32(value):
 
 def s32(value):
     value &= MASK32
+
     if value & 0x80000000:
         return value - 0x100000000
+
     return value
 
 
 def sign_extend(value, bits):
     sign_bit = 1 << (bits - 1)
-    return (value & (sign_bit - 1)) - (value & sign_bit)
+    mask = (1 << bits) - 1
+
+    value &= mask
+
+    if value & sign_bit:
+        value -= 1 << bits
+
+    return value
 
 
 class TinyRV32Reference:
+
     def __init__(self, program, memory_words=64):
         self.regs = [0] * 32
         self.pc = 0
@@ -27,12 +37,32 @@ class TinyRV32Reference:
 
         self.steps = 0
 
+        self.coverage = {
+            "ADD": 0,
+            "SUB": 0,
+            "AND": 0,
+            "OR": 0,
+            "XOR": 0,
+            "SLL": 0,
+            "SRL": 0,
+            "SLT": 0,
+            "ADDI": 0,
+            "LW": 0,
+            "SW": 0,
+            "BEQ_taken": 0,
+            "BEQ_not_taken": 0,
+            "BNE_taken": 0,
+            "BNE_not_taken": 0,
+            "JAL": 0,
+        }
+
     def fetch(self):
         index = self.pc >> 2
 
         if index < 0 or index >= len(self.imem):
             raise RuntimeError(
-                f"PC out of instruction memory: 0x{self.pc:08X}"
+                f"PC outside instruction memory: "
+                f"0x{self.pc:08X}"
             )
 
         return self.imem[index]
@@ -93,125 +123,218 @@ class TinyRV32Reference:
         if opcode == 0b0110011:
 
             if funct3 == 0b000:
+
                 if funct7 == 0b0100000:
-                    result = a - b          # SUB
+                    result = a - b
+                    self.coverage["SUB"] += 1
+
                 else:
-                    result = a + b          # ADD
+                    result = a + b
+                    self.coverage["ADD"] += 1
 
             elif funct3 == 0b111:
-                result = a & b              # AND
+                result = a & b
+                self.coverage["AND"] += 1
 
             elif funct3 == 0b110:
-                result = a | b              # OR
+                result = a | b
+                self.coverage["OR"] += 1
 
             elif funct3 == 0b100:
-                result = a ^ b              # XOR
+                result = a ^ b
+                self.coverage["XOR"] += 1
 
             elif funct3 == 0b001:
-                result = a << (b & 0x1F)    # SLL
+                result = u32(
+                    a << (b & 0x1F)
+                )
+                self.coverage["SLL"] += 1
 
             elif funct3 == 0b101:
-                result = a >> (b & 0x1F)    # SRL
+                result = a >> (b & 0x1F)
+                self.coverage["SRL"] += 1
 
             elif funct3 == 0b010:
-                result = int(s32(a) < s32(b))  # SLT
+                result = int(
+                    s32(a) < s32(b)
+                )
+                self.coverage["SLT"] += 1
 
             else:
                 raise RuntimeError(
-                    f"Unsupported R-type funct3={funct3:03b}"
+                    f"Unsupported R-type funct3="
+                    f"{funct3:03b}"
                 )
 
-            self.write_reg(rd, result)
+            self.write_reg(
+                rd,
+                result
+            )
 
         # ADDI
 
         elif opcode == 0b0010011:
 
             if funct3 != 0b000:
-                raise RuntimeError("Unsupported OP-IMM instruction")
+                raise RuntimeError(
+                    f"Unsupported OP-IMM funct3="
+                    f"{funct3:03b}"
+                )
 
-            imm = sign_extend(instr >> 20, 12)
+            imm = sign_extend(
+                instr >> 20,
+                12
+            )
 
-            self.write_reg(rd, a + imm)
+            self.write_reg(
+                rd,
+                a + imm
+            )
+
+            self.coverage["ADDI"] += 1
 
         # LW
 
         elif opcode == 0b0000011:
 
             if funct3 != 0b010:
-                raise RuntimeError("Unsupported LOAD instruction")
+                raise RuntimeError(
+                    f"Unsupported LOAD funct3="
+                    f"{funct3:03b}"
+                )
 
-            imm = sign_extend(instr >> 20, 12)
-            address = u32(a + imm)
+            imm = sign_extend(
+                instr >> 20,
+                12
+            )
+
+            address = u32(
+                a + imm
+            )
+
+            value = self.load_word(
+                address
+            )
 
             self.write_reg(
                 rd,
-                self.load_word(address)
+                value
             )
+
+            self.coverage["LW"] += 1
 
         # SW
 
         elif opcode == 0b0100011:
 
             if funct3 != 0b010:
-                raise RuntimeError("Unsupported STORE instruction")
+                raise RuntimeError(
+                    f"Unsupported STORE funct3="
+                    f"{funct3:03b}"
+                )
 
-            imm_raw = (
-                ((instr >> 25) & 0x7F) << 5
-            ) | (
-                (instr >> 7) & 0x1F
+            imm = (
+                ((instr >> 25) << 5)
+                | ((instr >> 7) & 0x1F)
             )
 
-            imm = sign_extend(imm_raw, 12)
-            address = u32(a + imm)
+            imm = sign_extend(
+                imm,
+                12
+            )
 
-            self.store_word(address, b)
+            address = u32(
+                a + imm
+            )
+
+            self.store_word(
+                address,
+                b
+            )
+
+            self.coverage["SW"] += 1
 
         # BEQ / BNE
 
         elif opcode == 0b1100011:
 
-            imm_raw = (
-                ((instr >> 31) & 0x1) << 12
-                | ((instr >> 7) & 0x1) << 11
-                | ((instr >> 25) & 0x3F) << 5
-                | ((instr >> 8) & 0xF) << 1
+            imm = (
+                (((instr >> 31) & 0x1) << 12)
+                | (((instr >> 7) & 0x1) << 11)
+                | (((instr >> 25) & 0x3F) << 5)
+                | (((instr >> 8) & 0xF) << 1)
             )
 
-            imm = sign_extend(imm_raw, 13)
+            imm = sign_extend(
+                imm,
+                13
+            )
 
-            if funct3 == 0b000:       # BEQ
+            if funct3 == 0b000:
+
                 taken = a == b
 
-            elif funct3 == 0b001:     # BNE
+                if taken:
+                    self.coverage["BEQ_taken"] += 1
+                else:
+                    self.coverage[
+                        "BEQ_not_taken"
+                    ] += 1
+
+            elif funct3 == 0b001:
+
                 taken = a != b
 
+                if taken:
+                    self.coverage["BNE_taken"] += 1
+                else:
+                    self.coverage[
+                        "BNE_not_taken"
+                    ] += 1
+
             else:
-                raise RuntimeError("Unsupported BRANCH instruction")
+                raise RuntimeError(
+                    f"Unsupported BRANCH funct3="
+                    f"{funct3:03b}"
+                )
 
             if taken:
-                next_pc = u32(self.pc + imm)
+                next_pc = u32(
+                    self.pc + imm
+                )
 
         # JAL
 
         elif opcode == 0b1101111:
 
-            imm_raw = (
-                ((instr >> 31) & 0x1) << 20
-                | ((instr >> 12) & 0xFF) << 12
-                | ((instr >> 20) & 0x1) << 11
-                | ((instr >> 21) & 0x3FF) << 1
+            imm = (
+                (((instr >> 31) & 0x1) << 20)
+                | (((instr >> 12) & 0xFF) << 12)
+                | (((instr >> 20) & 0x1) << 11)
+                | (((instr >> 21) & 0x3FF) << 1)
             )
 
-            imm = sign_extend(imm_raw, 21)
+            imm = sign_extend(
+                imm,
+                21
+            )
 
-            self.write_reg(rd, self.pc + 4)
-            next_pc = u32(self.pc + imm)
+            self.write_reg(
+                rd,
+                self.pc + 4
+            )
+
+            next_pc = u32(
+                self.pc + imm
+            )
+
+            self.coverage["JAL"] += 1
 
         else:
             raise RuntimeError(
-                f"Unsupported opcode 0x{opcode:02X} "
-                f"at PC 0x{self.pc:08X}"
+                f"Unsupported opcode "
+                f"0x{opcode:02X} "
+                f"at PC=0x{self.pc:08X}"
             )
 
         self.pc = next_pc
@@ -219,21 +342,25 @@ class TinyRV32Reference:
         self.steps += 1
 
     def run(self, max_steps=100):
+
         for _ in range(max_steps):
 
             instr = self.fetch()
 
-            # jal x0, 0
-            # Used by our RTL test program as a terminal loop.
+            # JAL x0, 0
+            # Used as the terminal infinite loop
             if instr == 0x0000006F:
                 return
 
             self.step()
 
         raise RuntimeError(
-            f"Program did not terminate after {max_steps} steps"
+            f"Program did not terminate "
+            f"within {max_steps} instructions"
         )
 
+
+# Directed reference-model self-test
 
 PROGRAM = [
     0x00500093,  # addi x1, x0, 5
@@ -243,7 +370,7 @@ PROGRAM = [
     0x00002203,  # lw   x4, 0(x0)
     0x00000313,  # addi x6, x0, 0
     0x00418463,  # beq  x3, x4, +8
-    0x06300313,  # addi x6, x0, 99 -- must be skipped
+    0x06300313,  # addi x6, x0, 99 -- skipped
     0x02A00293,  # addi x5, x0, 42
     0x0000006F,  # jal  x0, 0
 ]
@@ -252,26 +379,76 @@ PROGRAM = [
 def check(name, actual, expected):
     if actual != expected:
         raise AssertionError(
-            f"{name}: expected {expected}, got {actual}"
+            f"{name}: "
+            f"actual=0x{actual:08X}, "
+            f"expected=0x{expected:08X}"
         )
 
-    print(f"PASS: {name} = {actual}")
+
+def main():
+    cpu = TinyRV32Reference(
+        PROGRAM,
+        memory_words=64
+    )
+
+    cpu.run(
+        max_steps=100
+    )
+
+    check(
+        "x0",
+        cpu.regs[0],
+        0
+    )
+
+    check(
+        "x1",
+        cpu.regs[1],
+        5
+    )
+
+    check(
+        "x2",
+        cpu.regs[2],
+        7
+    )
+
+    check(
+        "x3",
+        cpu.regs[3],
+        12
+    )
+
+    check(
+        "x4",
+        cpu.regs[4],
+        12
+    )
+
+    check(
+        "x5",
+        cpu.regs[5],
+        42
+    )
+
+    check(
+        "x6",
+        cpu.regs[6],
+        0
+    )
+
+    check(
+        "memory[0]",
+        cpu.dmem[0],
+        12
+    )
+
+    print("REFERENCE MODEL PASSED")
+    print(
+        f"Executed instructions: "
+        f"{cpu.steps}"
+    )
 
 
 if __name__ == "__main__":
-
-    cpu = TinyRV32Reference(PROGRAM)
-    cpu.run()
-
-    check("x0", cpu.regs[0], 0)
-    check("x1", cpu.regs[1], 5)
-    check("x2", cpu.regs[2], 7)
-    check("x3", cpu.regs[3], 12)
-    check("x4", cpu.regs[4], 12)
-    check("x5", cpu.regs[5], 42)
-    check("x6", cpu.regs[6], 0)
-
-    check("memory[0]", cpu.dmem[0], 12)
-
-    print("REFERENCE MODEL PASSED")
-    print(f"Executed instructions: {cpu.steps}")
+    main()

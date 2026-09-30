@@ -1,15 +1,20 @@
-import json
 import argparse
+import json
 import random
 
 from reference_model import TinyRV32Reference
 
 
-# SEED = 42
-PROGRAM_LENGTH = 40
+PROGRAM_LENGTH = 55
 DMEM_WORDS = 64
 
-# random.seed(SEED)
+# x1..x12 are available to random arithmetic instructions
+# x13 is reserved as JAL link register
+# x14 and x15 are reserved for deterministic branch conditions
+GENERAL_REG_MAX = 12
+JAL_LINK_REG = 13
+CTRL_A = 14
+CTRL_B = 15
 
 
 def r_type(funct7, funct3, rs2, rs1, rd):
@@ -95,17 +100,105 @@ def sw(rs2, rs1, imm):
     )
 
 
+def branch(funct3, rs1, rs2, imm):
+    if imm % 2 != 0:
+        raise ValueError("Branch offset must be even")
+
+    imm &= 0x1FFF
+
+    bit12 = (imm >> 12) & 0x1
+    bit11 = (imm >> 11) & 0x1
+    bits10_5 = (imm >> 5) & 0x3F
+    bits4_1 = (imm >> 1) & 0xF
+
+    return (
+        (bit12 << 31)
+        | (bits10_5 << 25)
+        | (rs2 << 20)
+        | (rs1 << 15)
+        | (funct3 << 12)
+        | (bits4_1 << 8)
+        | (bit11 << 7)
+        | 0b1100011
+    )
+
+
+def beq(rs1, rs2, imm):
+    return branch(0b000, rs1, rs2, imm)
+
+
+def bne(rs1, rs2, imm):
+    return branch(0b001, rs1, rs2, imm)
+
+
+def jal(rd, imm):
+    if imm % 2 != 0:
+        raise ValueError("JAL offset must be even")
+
+    imm &= 0x1FFFFF
+
+    bit20 = (imm >> 20) & 0x1
+    bits10_1 = (imm >> 1) & 0x3FF
+    bit11 = (imm >> 11) & 0x1
+    bits19_12 = (imm >> 12) & 0xFF
+
+    return (
+        (bit20 << 31)
+        | (bits10_1 << 21)
+        | (bit11 << 20)
+        | (bits19_12 << 12)
+        | (rd << 7)
+        | 0b1101111
+    )
+
+
 def random_reg():
-    return random.randint(1, 15)
+    return random.randint(1, GENERAL_REG_MAX)
+
+
+def random_payload():
+    return addi(
+        random_reg(),
+        random_reg(),
+        random.randint(-64, 63)
+    )
 
 
 def generate():
     program = []
 
-    # Seed several registers with non-zero values
-    for rd in range(1, 16):
+    # Initialize every register available to random datapath operations.
+    for rd in range(1, GENERAL_REG_MAX + 1):
         value = random.randint(-100, 100)
         program.append(addi(rd, 0, value))
+
+    # Reserved control-flow registers.
+    program.append(addi(JAL_LINK_REG, 0, 0))
+    program.append(addi(CTRL_A, 0, 1))
+    program.append(addi(CTRL_B, 0, 2))
+
+    # Guaranteed control-flow coverage in every generated test.
+    # Offset +8 means: skip exactly one 32-bit instruction.
+
+    # BEQ taken: 1 == 1
+    program.append(beq(CTRL_A, CTRL_A, 8))
+    program.append(random_payload())
+
+    # BEQ not taken: 1 != 2
+    program.append(beq(CTRL_A, CTRL_B, 8))
+    program.append(random_payload())
+
+    # BNE taken: 1 != 2
+    program.append(bne(CTRL_A, CTRL_B, 8))
+    program.append(random_payload())
+
+    # BNE not taken: 1 == 1
+    program.append(bne(CTRL_A, CTRL_A, 8))
+    program.append(random_payload())
+
+    # JAL always taken and writes return address to x13
+    program.append(jal(JAL_LINK_REG, 8))
+    program.append(random_payload())
 
     generators = [
         lambda: add(random_reg(), random_reg(), random_reg()),
@@ -123,7 +216,6 @@ def generate():
             random.randint(-128, 127)
         ),
 
-        # Use x0 as the memory base so addresses stay valid/aligned
         lambda: sw(
             random_reg(),
             0,
@@ -140,7 +232,7 @@ def generate():
     while len(program) < PROGRAM_LENGTH:
         program.append(random.choice(generators)())
 
-    # Terminal loop
+    # Terminal infinite loop
     program.append(0x0000006F)
 
     return program
@@ -155,15 +247,24 @@ def main():
 
     program = generate()
 
-    cpu = TinyRV32Reference(program, memory_words=DMEM_WORDS)
+    cpu = TinyRV32Reference(
+        program,
+        memory_words=DMEM_WORDS
+    )
+
     cpu.run(max_steps=200)
+
+    # Pad instruction memory to 64 words
+    padded_program = program + [
+        0x00000013
+    ] * (64 - len(program))
 
     with open(
         "verification/generated/program.hex",
         "w",
         encoding="utf-8"
     ) as f:
-        for instr in program:
+        for instr in padded_program:
             f.write(f"{instr:08x}\n")
 
     expected = {
@@ -172,6 +273,7 @@ def main():
         "memory": cpu.dmem,
         "pc": cpu.pc,
         "steps": cpu.steps,
+        "coverage": cpu.coverage,
     }
 
     with open(
@@ -181,9 +283,10 @@ def main():
     ) as f:
         json.dump(expected, f, indent=2)
 
-    print(f"Generated {len(program)} words")
-    print(f"Reference model executed {cpu.steps} instructions")
-    print(f"Seed = {args.seed}")
+    print(f"Generated program for seed {args.seed}")
+    print(f"Program words: {len(program)}")
+    print(f"Executed instructions: {cpu.steps}")
+
 
 if __name__ == "__main__":
     main()

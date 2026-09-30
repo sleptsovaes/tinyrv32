@@ -44,8 +44,15 @@ def main():
 
     errors = 0
 
-    # PC is intentionally ignored for now because RTL remains
-    # in the terminal JAL x0,0 loop for several extra cycles
+    ref_pc = expected["pc"]
+
+    if rtl_pc != ref_pc:
+        print(
+            f"FAIL PC: "
+            f"RTL=0x{rtl_pc:08X} "
+            f"REF=0x{ref_pc:08X}"
+        )
+        errors += 1
 
     for i in range(16):
         rtl = rtl_regs[i]
@@ -58,18 +65,6 @@ def main():
                 f"REF=0x{ref:08X}"
             )
             errors += 1
-
-    for i, (rtl, ref) in enumerate(
-        zip(rtl_memory, expected["memory"])
-    ):
-        if rtl != ref:
-            print(
-                f"FAIL M{i}: "
-                f"RTL=0x{rtl:08X} "
-                f"REF=0x{ref:08X}"
-            )
-            errors += 1
-
     if errors:
         print(f"DIFFERENTIAL TEST FAILED: {errors} mismatch(es)")
         sys.exit(1)
