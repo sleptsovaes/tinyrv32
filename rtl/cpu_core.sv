@@ -41,7 +41,7 @@ module cpu_core (
     logic [31:0] alu_a;
     logic [31:0] alu_b;
     logic [31:0] alu_result;
-
+    logic rf_we;
     logic zero;
 
     assign instr = imem_rdata;
@@ -62,7 +62,8 @@ module cpu_core (
 
     assign dmem_addr  = alu_result;
     assign dmem_wdata = read_data2;
-    assign dmem_we    = mem_write;
+    assign dmem_we = mem_write && !reset;
+    assign rf_we   = reg_write && !reset;
 
     assign write_data =
         jump
@@ -97,7 +98,7 @@ module cpu_core (
 
     regfile rf (
         .clk(clk),
-        .we(reg_write),
+        .we(rf_we),
 
         .rs1(rs1),
         .rs2(rs2),
