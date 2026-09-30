@@ -23,3 +23,8 @@ obj_dir/
 # Editors
 .vscode/
 .idea/
+__pycache__/
+*.py[cod]
+/build/
+/diff_test
+/TinyRV32_Performance_Benchmark.zip

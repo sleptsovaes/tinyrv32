@@ -1,317 +1,295 @@
 # TinyRV32
 
-### A Compact RISC-V Core from RTL to GDSII
+A compact SystemVerilog processor implementing an RV32I subset, with a
+two-stage Fetch/Execute pipeline and an OpenROAD/SKY130 RTL-to-GDSII flow.
 
-TinyRV32 is a compact 32-bit RISC-V-compatible processor core designed in
-SystemVerilog and implemented through a complete RTL-to-GDSII flow using
-OpenROAD and the SKY130 HD standard-cell library.
+The project compares architectural changes through functional verification,
+post-route timing analysis and measured instruction-cycle counts.
 
-The project explores the complete digital IC design process:
+## Main Results
 
-**RTL architecture → functional verification → synthesis → floorplanning → placement → clock-tree synthesis → routing → static timing analysis → GDSII**
-
----
+- Functional verification includes RTL unit tests, integrated CPU regression,
+  wrong-path flush checks and 100 randomized differential programs.
+- The pipeline achieved timing closure at the highest tested passing target
+  of **113 MHz**, with **+0.15 ns worst setup slack**.
+- The 114 MHz and 115 MHz implementations failed setup timing.
+- All six pipeline implementations reported zero routing DRC violations.
+- At 100 MHz, the pipeline reduced physical design area by **3.62%**
+  relative to the measured single-cycle baseline.
+- At the selected operating points of 100 MHz and 113 MHz, the pipeline
+  reduced execution time by approximately **11.2–11.3%** on workloads
+  without control-flow redirects.
+- Taken-branch and JAL workloads took approximately **32% more time** because
+  each redirect introduces a pipeline bubble.
 
 ## Architecture
 
-TinyRV32 is currently implemented as a single-cycle processor supporting a
-subset of the RV32I instruction set.
+The current core has two stages:
+
+1. **Fetch:** present the fetch PC to the instruction-memory interface.
+2. **Execute:** decode the registered instruction, read operands, execute,
+   access data memory and write back the result.
+
+The Fetch/Execute boundary holds the instruction, its PC and a valid bit.
 
 ```mermaid
-flowchart LR
-    PC[Program Counter] --> IMEM[Instruction Interface]
-
-    IMEM --> CTRL[Control Unit]
-    IMEM --> RF[Register File]
-    IMEM --> IMM[Immediate Generator]
-
-    RF --> ALU[ALU]
-    IMM --> MUX[ALU Operand MUX]
-    MUX --> ALU
-
-    CTRL --> RF
-    CTRL --> MUX
-    CTRL --> ALU
-
-    ALU --> DMEM[Data Memory Interface]
-    DMEM --> WB[Writeback MUX]
-    ALU --> WB
-
-    WB --> RF
-
-    CTRL --> NPC[Next-PC Logic]
-    ALU --> NPC
-    IMM --> NPC
-    NPC --> PC
+flowchart TD
+    F["Fetch PC"] --> I["Instruction-memory interface"]
+    F --> P["Fetch/Execute registers: PC, instruction, valid"]
+    I --> P
+    P --> E["Decode, ALU, memory and writeback"]
+    R["Register file"] --> E
+    E --> R
+    E --> D["Data-memory interface"]
+    D --> E
+    E -->|"Taken branch or JAL: redirect and flush"| F
 ```
 
-### Implemented instructions
+Taken BEQ/BNE instructions and JAL redirect fetch and invalidate the
+sequentially fetched instruction. Each redirect introduces one bubble.
+Invalid execute entries cannot write registers or data memory.
 
-**Arithmetic**
-- ADD
-- SUB
-- ADDI
+The core uses separate instruction and data interfaces. The verification
+environment provides combinational memory reads and synchronous stores,
+without wait states.
 
-**Logic**
-- AND
-- OR
-- XOR
+### Implemented Instructions
 
-**Shifts and comparison**
-- SLL
-- SRL
-- SLT
+| Category | Instructions |
+|---|---|
+| Arithmetic | ADD, SUB, ADDI |
+| Logic | AND, OR, XOR |
+| Shifts and comparison | SLL, SRL, SLT |
+| Memory | LW, SW |
+| Control flow | BEQ, BNE, JAL |
 
-**Memory**
-- LW
-- SW
+TinyRV32 implements this subset rather than the complete RV32I ISA.
 
-**Control flow**
-- BEQ
-- BNE
-- JAL
+### RTL Modules
 
----
-
-## RTL Structure
-
-```text
-rtl/
-├── alu.sv
-├── control_unit.sv
-├── cpu_core.sv
-├── imm_gen.sv
-├── next_pc.sv
-├── pc.sv
-└── regfile.sv
-```
-
-The core contains:
-
-- 32-bit ALU
-- 32 × 32-bit register file
-- immediate generator
-- instruction decoder / control unit
-- program counter
-- branch and next-PC logic
-- load/store interface
-- writeback datapath
-
----
+| Module | Purpose |
+|---|---|
+| `cpu_core.sv` | Pipeline state, datapath integration and side-effect gating |
+| `control_unit.sv` | Instruction decoding and control signals |
+| `regfile.sv` | Integer register storage and operand reads |
+| `alu.sv` | Arithmetic, logic, shifts and comparison |
+| `imm_gen.sv` | Immediate extraction |
+| `next_pc.sv` | Sequential and redirected PC selection |
+| `pc.sv` | Program-counter module used by the single-cycle implementation |
 
 ## Functional Verification
 
-Each RTL block was verified independently before full CPU integration.
+Verification uses Icarus Verilog and an independent Python reference model.
 
-Verification was performed with Icarus Verilog and GTKWave.
+The completed checks include:
 
-The integrated processor executes the following test program:
+- RTL unit tests;
+- integrated CPU regression and reset checks;
+- taken-branch wrong-path flush verification;
+- independent reference-model checks;
+- 100 randomized differential programs;
+- PC, register and data-memory architectural-state comparison;
+- six performance workloads with expected state and instruction-count checks.
 
-```asm
-addi x1, x0, 5
-addi x2, x0, 7
-add  x3, x1, x2
+From the current pipeline checkout:
 
-sw   x3, 0(x0)
-lw   x4, 0(x0)
-
-beq  x3, x4, +8
-
-addi x5, x0, 99
-addi x5, x0, 42
-
-jal  x0, 0
+```bash
+make test
 ```
 
-Expected final state:
-
-```text
-x1 = 5
-x2 = 7
-x3 = 12
-memory[0] = 12
-x4 = 12
-x5 = 42
-```
-
-The taken `BEQ` changes the program counter from `0x14` to `0x1C`,
-correctly skipping the instruction that would write `99` to `x5`.
-
-### CPU simulation waveform
-
-![CPU functional simulation](docs/cpu_waveform.png)
----
-
-## RTL-to-GDSII Flow
-
-Physical implementation was performed using:
-
-- **Yosys** — logic synthesis
-- **OpenROAD Flow Scripts**
-- **SKY130**
-- **sky130_fd_sc_hd** standard-cell library
-
-Flow:
-
-```text
-SystemVerilog RTL
-        ↓
-Logic Synthesis
-        ↓
-Floorplanning
-        ↓
-Placement
-        ↓
-Clock Tree Synthesis
-        ↓
-Global Routing
-        ↓
-Detailed Routing
-        ↓
-Static Timing Analysis
-        ↓
-Final GDSII
-```
-
----
-
-## Synthesis Results
-
-| Metric | Result |
-|---|---:|
-| Standard cells | 4,351 |
-| Mapped cell area | 60,150.19 um² |
-| Sequential cell area | 31,390.11 um² |
-| Sequential share | 52.19% |
-| Register-file storage | 1,024 flip-flops |
-
-The 32 × 32-bit register file was synthesized into **1,024 flip-flops** with
-combinational read multiplexing.
-
-This provides a simple RTL implementation but contributes significantly to
-both physical area and read-path complexity.
-
----
+The performance harness additionally compares all integer registers and
+data-memory words between the single-cycle and pipeline RTL snapshots.
 
 ## Physical Implementation
 
-At the 50 MHz baseline:
+The implementation flow uses Yosys, OpenROAD Flow Scripts, OpenSTA and the
+SKY130 HD standard-cell library.
 
-| Metric | Result |
-|---|---:|
-| Clock period | 20 ns |
-| Target frequency | 50 MHz |
-| Physical design area | 68,527 um² |
-| Utilization | 40% |
-| Worst setup slack | +2.15 ns |
-| WNS | 0 ns |
-| TNS | 0 ns |
-| Routing DRC violations | 0 |
-| Final GDSII | Generated |
+RTL synthesis is followed by floorplanning, placement, clock-tree synthesis,
+routing, static timing analysis and final GDSII generation.
 
-### Final routed layout
+### Architecture Comparison
 
-![Final routed TinyRV32 layout](docs/final_layout.png)
+These operating points use a 10 ns or 8.8496 ns clock period with 2 ns input
+and output delays.
 
-### Routed layout detail
+| Metric | Single-cycle, 100 MHz | Pipeline, 100 MHz | Pipeline, 113 MHz |
+|---|---:|---:|---:|
+| Clock period | 10 ns | 10 ns | 8.8496 ns |
+| Reported worst setup-path arrival | 7.92 ns | 7.79 ns | 6.70 ns |
+| Worst setup slack | +0.08 ns | +0.21 ns | +0.15 ns |
+| Physical design area | 75,831 µm² | 73,084 µm² | 76,126 µm² |
+| Utilization | 44% | 41% | 43% |
+| Routing DRC violations | 0 | 0 | 0 |
+| Final GDSII | Generated | Generated | Generated |
 
-![Detailed routed region](docs/routed_detail.png)
+At 100 MHz, the pipeline improved setup margin by 0.13 ns and reduced
+physical design area by 3.62%.
 
----
+### Pipeline Frequency Sweep
 
-## Timing Closure Experiment
+Input and output delays were held at **2 ns** throughout this sweep.
 
-A post-route frequency sweep was performed to study the timing/area trade-off.
+| Target | Clock period | Worst setup slack | Setup TNS | Design area | Utilization | Routing DRC | Setup result |
+|---|---:|---:|---:|---:|---:|---:|---|
+| 100 MHz | 10.0000 ns | +0.21 ns | 0 ns | 73,084 µm² | 41% | 0 | PASS |
+| 105 MHz | 9.5238 ns | +0.10 ns | 0 ns | 74,126 µm² | 41% | 0 | PASS |
+| 110 MHz | 9.0909 ns | +0.07 ns | 0 ns | 74,783 µm² | 42% | 0 | PASS |
+| **113 MHz** | **8.8496 ns** | **+0.15 ns** | **0 ns** | **76,126 µm²** | **43%** | **0** | **PASS** |
+| 114 MHz | 8.7719 ns | −0.06 ns | −0.06 ns | 76,487 µm² | 43% | 0 | FAIL |
+| 115 MHz | 8.6957 ns | −0.06 ns | −0.08 ns | 76,856 µm² | 43% | 0 | FAIL |
 
-| Target | Worst Slack | Physical Area | Utilization | Result |
-|---:|---:|---:|---:|---|
-| 50 MHz | +2.15 ns | 68,527 um² | 40% | PASS |
-| 75 MHz | +0.43 ns | 69,305 um² | 40% | PASS |
-| 80 MHz | +0.17 ns | 69,848 um² | 41% | PASS |
-| 85 MHz | +0.26 ns | 71,258 um² | 42% | PASS |
-| 90 MHz | +0.20 ns | 72,804 um² | 43% | PASS |
-| 95 MHz | +0.09 ns | 74,305 um² | 43% | PASS |
-| **98 MHz** | **+0.15 ns** | **76,124 um²** | **44%** | **PASS** |
-| **100 MHz** | **-0.038 ns** | **75,989 um²** | **44%** | **FAIL** |
+Each target produced a separate placement and routing solution, so timing
+margin is not monotonic across targets.
 
-Timing closure was achieved at **98 MHz** under the selected implementation
-constraints.
+**113 MHz is the highest tested timing-closed target.** This sweep does not
+establish an exact maximum operating frequency.
 
-The 100 MHz implementation generated a final routed GDSII layout but
-exhibited a small setup violation of approximately **38 ps**.
+Routing DRC counts come from the OpenROAD routing reports.
 
-Full results are available in
-[`physical/reports/frequency_sweep.md`](physical/reports/frequency_sweep.md).
+### Critical-Path Change
 
----
+The measured single-cycle baseline had a direct path from
+`imem_rdata[19]` to `dmem_addr[31]`, through operand selection,
+register-file reads and address-generation logic.
 
-## Critical Path Analysis
+The pipeline boundary removed that direct instruction-input-to-data-address
+path. At 113 MHz, the reported worst setup path starts at a mapped flip-flop
+and ends at `dmem_addr[20]`.
 
-At the 100 MHz target, the worst timing path was:
+A dedicated LSU address-adder experiment was also evaluated before
+pipelining. It retained the direct instruction-input-to-data-address path.
+
+### Historical Single-Cycle Sweep
+
+An earlier implementation sweep achieved timing closure at 98 MHz and
+reported a −0.038 ns setup slack at 100 MHz. Its results are retained in
+[the historical frequency-sweep report](physical/reports/frequency_sweep.md).
+
+The later single-cycle baseline used in the comparison above passed at
+100 MHz with +0.08 ns setup slack. These are separate implementation runs.
+
+The following images document the earlier single-cycle implementation:
+
+![Single-cycle CPU simulation](docs/cpu_waveform.png)
+
+![Single-cycle routed layout](docs/final_layout.png)
+
+![Single-cycle routed layout detail](docs/routed_detail.png)
+
+## Measured Workload Performance
+
+Both RTL implementations execute identical programs.
+
+Cycles include pipeline fill and end on the signature-store commit.
+Reset cycles and the terminal JAL are excluded.
+
+RTL simulation uses a 10 ns testbench clock. Execution times are calculated
+from measured cycles at **100 MHz for single-cycle** and **113 MHz for
+pipeline**; they are not simulator wall-clock times.
+
+| Workload | Retired | Redirects | Single cycles | Pipeline cycles | Pipeline CPI | Single time, µs | Pipeline time, µs | Speedup |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| alu_dependency_chain | 515 | 0 | 515 | 516 | 1.0019 | 5.1500 | 4.5664 | 1.1278 |
+| memory_dependency_chain | 386 | 0 | 386 | 387 | 1.0026 | 3.8600 | 3.4248 | 1.1271 |
+| branch_not_taken | 259 | 0 | 259 | 260 | 1.0039 | 2.5900 | 2.3009 | 1.1257 |
+| taken_branch_loop | 259 | 127 | 259 | 387 | 1.4942 | 2.5900 | 3.4248 | 0.7563 |
+| jal_flush_chain | 258 | 128 | 258 | 387 | 1.5000 | 2.5800 | 3.4248 | 0.7533 |
+| mixed_loop | 900 | 128 | 900 | 1029 | 1.1433 | 9.0000 | 9.1062 | 0.9883 |
+
+Speedup is single-cycle execution time divided by pipeline execution time.
+Values above 1 indicate a faster pipeline result.
+
+All runs passed closed-form state/count oracles and full architectural-state
+comparison between the two RTL snapshots.
+
+For these workloads, with `N` retired instructions and `R` redirects:
 
 ```text
-Startpoint: imem_rdata[20]
-Endpoint:   dmem_addr[29]
-
-Data arrival time:  8.038 ns
-Data required time: 8.000 ns
-Setup slack:        -0.038 ns
+Single-cycle cycles = N
+Pipeline cycles     = N + R + 1
 ```
 
-The path traverses instruction-dependent multiplexing and address-generation
-logic before reaching the data-memory address output.
+The extra cycle is pipeline fill. Each redirect adds one bubble.
 
-This highlights one of the limitations of the current single-cycle
-architecture: instruction decoding, operand selection and memory address
-generation occur within the same cycle.
+At the selected clock frequencies, the pipeline is faster when
+`(R + 1) / N < 0.13`. The mixed workload exceeds this threshold and takes
+approximately 1.18% more time.
 
----
+The single-cycle 100 MHz target is a tested operating point, not its
+measured maximum frequency.
 
-## Engineering Observations
+## Reproducing the Measurements
 
-Several implementation-level effects were observed during the project:
+### Functional and Performance Tests
 
-1. Increasing the target frequency triggered more aggressive timing-driven
-   optimization.
+Required tools: Git, Python 3, Icarus Verilog and Make.
 
-2. Physical design area increased from approximately **68,527 um² at
-   50 MHz** to **76,124 um² at 98 MHz**.
+```bash
+make test
 
-3. Timing results were not strictly monotonic between runs because each target
-   frequency produced a new placement and routing solution.
+python3 verification/run_performance.py \
+  --baseline 6ec637b \
+  --single-mhz 100 \
+  --pipeline-mhz 113
+```
 
-4. The flip-flop-based register file contributes substantially to sequential
-   area and combinational read-path complexity.
+The performance runner extracts the baseline RTL from Git and snapshots the
+current pipeline RTL without switching branches.
 
-5. The memory-address generation path becomes one of the limiting
-   combinational paths at aggressive clock targets.
+Measured source identifiers:
 
----
+- Single-cycle RTL commit:
+  `6ec637b161d326051904ab9ade76cc9e1d15b459`
+- Pipeline snapshot HEAD:
+  `7adbbe89e1d305c76d00afaf7a129d0430c45b28`
 
-## Future Work
+The manifest records actual RTL file hashes, snapshot metadata,
+simulation-tool versions and benchmark settings.
 
-Potential improvements include:
+Committed benchmark outputs:
 
-- pipelining the processor datapath
-- reducing register-file read mux depth
-- using a dedicated register-file or SRAM macro
-- registering the memory interface
-- extending RV32I instruction support
-- improving branch handling
-- adding stronger automated verification
-- further timing and physical-design optimization
+- [Measured results](verification/performance/results/results.md)
+- [CSV results](verification/performance/results/results.csv)
+- [Source and tool manifest](verification/performance/results/manifest.json)
+- [Benchmark methodology](verification/PERFORMANCE_BENCHMARK.md)
 
----
+New runs write outputs under `build/performance/`.
 
-## Tools
+### Physical Flow
 
-- SystemVerilog
-- Icarus Verilog
-- Verilator
-- GTKWave
-- Yosys
-- OpenROAD
-- OpenSTA
-- SKY130 PDK
+Physical runs require Docker and a local OpenROAD Flow Scripts checkout.
 
----
+```bash
+ORFS_DIR="$HOME/OpenROAD-flow-scripts" \
+  bash physical/scripts/run_two_stage_113mhz.sh
+```
+
+Equivalent scripts and experiment directories exist for 100, 105, 110,
+114 and 115 MHz.
+
+Constraints and saved reports are under
+`physical/experiments/two_stage_pipeline_*mhz/`.
+
+The physical runners copy the currently checked-out RTL into the ORFS
+workspace. Reproducing an earlier experiment requires its original RTL
+snapshot, constraints and tool environment.
+
+## Engineering Conclusions
+
+The pipeline boundary improved the instruction-to-address timing structure,
+but higher clock frequency did not produce a uniform workload speedup.
+
+The measured trade-off depends on redirect frequency: straight-line code
+benefits from the selected 113 MHz operating point, while frequent taken
+branches and JAL instructions incur enough bubbles to outweigh that benefit.
+
+The project demonstrates RTL design, automated verification, physical
+implementation and quantitative architectural comparison.
+
+## Further Work
+
+- Reduce redirect penalties and measure the area/timing cost.
+- Extend the supported instruction subset.
+- Evaluate register-file and memory implementation alternatives.
+- Pin physical-flow tool versions and the Docker image digest.
