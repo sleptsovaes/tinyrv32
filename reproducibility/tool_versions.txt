@@ -1,0 +1,57 @@
+TinyRV32 Reproducibility Environment
+====================================
+
+[Host]
+Date (UTC): 2026-09-30 12:35:15 UTC
+Kernel: Linux 0 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+[Operating System]
+Ubuntu 24.04.5 LTS
+
+[Python]
+Python 3.12.3
+
+[Icarus Verilog]
+Icarus Verilog version 12.0 (stable) ()
+
+Copyright (c) 2000-2021 Stephen Williams (steve@icarus.com)
+
+
+[Git]
+git version 2.43.0
+
+[TinyRV32 repository]
+Commit: 46acd444b3471e8df747fa6d67d52a440d9ad3bb
+Branch: verification-fixes
+
+[Docker]
+Docker version 29.4.1, build 055a478
+
+[ORFS Docker image]
+Image: openroad/orfs:latest
+Image ID: sha256:2e5bf6fe865e102ca2313aba1d849da50f5973bc91c4212a2f68e7d905a39c8f
+Repo digests: ["openroad/orfs@sha256:2e5bf6fe865e102ca2313aba1d849da50f5973bc91c4212a2f68e7d905a39c8f"]
+
+[OpenROAD inside ORFS image]
+OpenROAD version unavailable
+
+[OpenROAD-flow-scripts]
+Commit: c63a606f9ccede13df8c82bbe31a8f6c6d323f6b
+Branch: master
+
+[Physical design configuration]
+export PLATFORM = sky130hd
+export DESIGN_NAME = cpu_core
+export CORE_UTILIZATION = 35
+export CORE_ASPECT_RATIO = 1
+export CORE_MARGIN = 2
+export PLACE_DENSITY = 0.60
+
+[Timing constraints]
+set clk_period 20
+create_clock \
+    -period $clk_period \
+set_input_delay \
+    [expr $clk_period * $clk_io_pct] \
+set_output_delay \
+    [expr $clk_period * $clk_io_pct] \
