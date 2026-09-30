@@ -1,0 +1,40 @@
+{
+  "baseline_commit": "6ec637b161d326051904ab9ade76cc9e1d15b459",
+  "current_head": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+  "current_rtl_changes": [],
+  "rtl_sha256": {
+    "single_cycle": {
+      "rtl/alu.sv": "6d49bb89e7f764a50f71f34733acc30e9b25cafd33ad720c09ac425d7eb5ad42",
+      "rtl/control_unit.sv": "347935da80ee872a2c104b1ecb94b3c149a0d3040dada9994066e1736c5ecad9",
+      "rtl/cpu_core.sv": "bde795afaa09669381636a4cf3bd4d0bd07111bef634a1e37b34f8883e5e9b4c",
+      "rtl/imm_gen.sv": "0a223b8f02c592ab546c395e5e14715aaf99ad6b82f9b33a4546eb0f69ca100b",
+      "rtl/next_pc.sv": "29eaac1dde8bd70e7cd4e206716e2c8ededb68c884a529888f19c090c480cd17",
+      "rtl/pc.sv": "71c9b05e491a0caf5774225211c11d95c50517050bbdacd4ed4b1bb323cb7697",
+      "rtl/regfile.sv": "78ea8224cfc83810d7a06e5449c37087e72d018b6925e64d11686e78645948ea"
+    },
+    "pipeline": {
+      "rtl/alu.sv": "6d49bb89e7f764a50f71f34733acc30e9b25cafd33ad720c09ac425d7eb5ad42",
+      "rtl/control_unit.sv": "347935da80ee872a2c104b1ecb94b3c149a0d3040dada9994066e1736c5ecad9",
+      "rtl/cpu_core.sv": "6d5f0523479be508a6c2d350f07828ab7feb92bd4a839a6f0bfe183267080b20",
+      "rtl/imm_gen.sv": "0a223b8f02c592ab546c395e5e14715aaf99ad6b82f9b33a4546eb0f69ca100b",
+      "rtl/next_pc.sv": "29eaac1dde8bd70e7cd4e206716e2c8ededb68c884a529888f19c090c480cd17",
+      "rtl/pc.sv": "71c9b05e491a0caf5774225211c11d95c50517050bbdacd4ed4b1bb323cb7697",
+      "rtl/regfile.sv": "78ea8224cfc83810d7a06e5449c37087e72d018b6925e64d11686e78645948ea"
+    }
+  },
+  "single_mhz": 100.0,
+  "pipeline_mhz": 113.0,
+  "executed_at_utc": "2026-09-30T17:45:51.240029+00:00",
+  "iterations": 128,
+  "straight_iterations": 256,
+  "simulated_clock_period_ns": 10,
+  "reset_cycles_excluded": true,
+  "terminal_jal_excluded": true,
+  "rf_initialization": "x1..x31 set to zero by testbench during reset",
+  "imem_words": 1024,
+  "dmem_words": 256,
+  "testbench_sha256": "b599ba83663ed339783dc35f340b468c47bd5e6ce4d93e0aaaf549bd1f5faf16",
+  "runner_sha256": "b9579499c253539a46666d151a1b28671946bb9774b8d1da1f0c23cffe67ec8f",
+  "vvp_version": "Icarus Verilog runtime version 12.0 (stable) ()\n\nCopyright (c) 2001-2021 Stephen Williams (steve@icarus.com)\n\n  This program is free software; you can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation; either version 2 of the License, or\n  (at your option) any later version.\n\n  This program is distributed in the hope that it will be useful,\n  but WITHOUT ANY WARRANTY; without even the implied warranty of\n  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n  GNU General Public License for more details.\n\n  You should have received a copy of the GNU General Public License along\n  with this program; if not, write to the Free Software Foundation, Inc.,\n  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.\n\n",
+  "iverilog_version": "Icarus Verilog version 12.0 (stable) ()\n\nCopyright (c) 2000-2021 Stephen Williams (steve@icarus.com)\n\n  This program is free software; you can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation; either version 2 of the License, or\n  (at your option) any later version.\n\n  This program is distributed in the hope that it will be useful,\n  but WITHOUT ANY WARRANTY; without even the implied warranty of\n  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n  GNU General Public License for more details.\n\n  You should have received a copy of the GNU General Public License along\n  with this program; if not, write to the Free Software Foundation, Inc.,\n  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.\n\nIcarus Verilog Preprocessor version 12.0 (stable) ()\n\nCopyright (c) 1999-2021 Stephen Williams (steve@icarus.com)\n\n  This program is free software; you can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation; either version 2 of the License, or\n  (at your option) any later version.\n\n  This program is distributed in the hope that it will be useful,\n  but WITHOUT ANY WARRANTY; without even the implied warranty of\n  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n  GNU General Public License for more details.\n\n  You should have received a copy of the GNU General Public License along\n  with this program; if not, write to the Free Software Foundation, Inc.,\n  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.\n\nIcarus Verilog Parser/Elaborator version 12.0 (stable) ()\n\nCopyright (c) 1998-2021 Stephen Williams (steve@icarus.com)\n\n  This program is free software; you can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation; either version 2 of the License, or\n  (at your option) any later version.\n\n  This program is distributed in the hope that it will be useful,\n  but WITHOUT ANY WARRANTY; without even the implied warranty of\n  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n  GNU General Public License for more details.\n\n  You should have received a copy of the GNU General Public License along\n  with this program; if not, write to the Free Software Foundation, Inc.,\n  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.\n\n FLAGS DLL vvp.tgt\nvvp.tgt: Icarus Verilog VVP Code Generator 12.0 (stable) ()\n\nCopyright (c) 2001-2021 Stephen Williams (steve@icarus.com)\n\n  This program is free software; you can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation; either version 2 of the License, or\n  (at your option) any later version.\n\n  This program is distributed in the hope that it will be useful,\n  but WITHOUT ANY WARRANTY; without even the implied warranty of\n  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n  GNU General Public License for more details.\n\n  You should have received a copy of the GNU General Public License along\n  with this program; if not, write to the Free Software Foundation, Inc.,\n  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.\n\n"
+}
