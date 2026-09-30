@@ -1,0 +1,25 @@
+# Simulation executables
+alu_test
+regfile_test
+imm_test
+control_test
+pc_test
+cpu_test
+
+# Waveforms
+*.vcd
+*.fst
+*.lxt
+
+# Verilator
+obj_dir/
+
+# Temporary files
+*.log
+*.tmp
+*~
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
