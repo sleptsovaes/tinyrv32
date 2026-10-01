@@ -298,10 +298,3 @@ branches and JAL instructions incur enough bubbles to outweigh that benefit.
 
 The project demonstrates RTL design, automated verification, physical
 implementation and quantitative architectural comparison.
-
-## Further Work
-
-- Reduce redirect penalties and measure the area/timing cost.
-- Extend the supported instruction subset.
-- Evaluate register-file and memory implementation alternatives.
-- Recover the original RTL snapshot for the historical LSU experiment.
