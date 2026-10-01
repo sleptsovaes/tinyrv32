@@ -1,0 +1,30 @@
+{
+  "executed_at_utc": "2026-10-01T14:30:59.319543+00:00",
+  "tool": "Yosys 0.33 (git sha1 2584903a060)",
+  "technology_mapped": false,
+  "sha256": {
+    "rtl/rv32_core.sv": "bb4523343989f6833390fd13c2601cfcec3f5822422491b25534e4bf38402a7e",
+    "rtl/tinyrv32_soc.sv": "14401d142c9952f5f3c1f26e81679f269fce1e76125c32e6a4bf00417ad64499",
+    "rtl/uart_tx.sv": "afa91219761914ca9a696101203adf660478427aea77847f27531aabf29660d6"
+  },
+  "runs": [
+    {
+      "top": "rv32_core",
+      "prediction": 0,
+      "structural_check": "PASS",
+      "inferred_latches": 0
+    },
+    {
+      "top": "rv32_core",
+      "prediction": 1,
+      "structural_check": "PASS",
+      "inferred_latches": 0
+    },
+    {
+      "top": "tinyrv32_soc",
+      "structural_check": "PASS",
+      "ram_words": 4096,
+      "board_mapping_verified": false
+    }
+  ]
+}

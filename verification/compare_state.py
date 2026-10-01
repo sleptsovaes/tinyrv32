@@ -1,77 +1,71 @@
+"""Strict architectural-state comparison: all registers and every memory word."""
+
+import argparse
 import json
+from pathlib import Path
+import re
 import sys
 
 
-def parse_rtl_state(path):
-    regs = [0] * 32
-    memory = [0] * 64
-    pc = None
+def parse_rtl_state(path, memory_words=64):
+    fields = {}
+    for number, line in enumerate(Path(path).read_text().splitlines(), 1):
+        parts = line.split()
+        if len(parts) != 2:
+            raise ValueError(f"Malformed state line {number}")
+        key, value = parts
+        if key in fields:
+            raise ValueError(f"Duplicate state field {key}")
+        if not re.fullmatch(r"[0-9a-fA-F]{8}", value):
+            raise ValueError(f"Invalid or unknown 32-bit value: {key} = {value}")
+        fields[key] = int(value, 16)
+    required = {"PC"} | {f"X{i}" for i in range(32)} | {
+        f"M{i}" for i in range(memory_words)
+    }
+    if set(fields) != required:
+        missing = sorted(required - set(fields))
+        extra = sorted(set(fields) - required)
+        raise ValueError(f"Incomplete state: missing={missing}, extra={extra}")
+    return (fields["PC"], [fields[f"X{i}"] for i in range(32)],
+            [fields[f"M{i}"] for i in range(memory_words)])
 
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            key, value = line.split()
-            if "x" in value.lower() or "z" in value.lower():
-                raise ValueError(
-                    f"RTL contains unknown value: {key} = {value}"
-                )
 
-            value = int(value, 16)
-
-            if key == "PC":
-                pc = value
-
-            elif key.startswith("X"):
-                index = int(key[1:])
-                regs[index] = value
-
-            elif key.startswith("M"):
-                index = int(key[1:])
-                memory[index] = value
-
-    return pc, regs, memory
+def compare(expected, actual):
+    pc, registers, memory = actual
+    if len(expected["registers"]) != 32:
+        raise ValueError("Reference must contain all 32 registers")
+    errors = []
+    pairs = [("PC", pc, expected["pc"])]
+    pairs += [(f"X{i}", value, expected["registers"][i])
+              for i, value in enumerate(registers)]
+    pairs += [(f"M{i}", value, expected["memory"][i])
+              for i, value in enumerate(memory)]
+    for name, observed, wanted in pairs:
+        if observed != wanted:
+            errors.append(f"{name}: RTL=0x{observed:08X}, REF=0x{wanted:08X}")
+    return errors
 
 
 def main():
-    with open(
-        "verification/generated/expected.json",
-        encoding="utf-8"
-    ) as f:
-        expected = json.load(f)
-
-    rtl_pc, rtl_regs, rtl_memory = parse_rtl_state(
-        "verification/generated/rtl_state.txt"
-    )
-
-    errors = 0
-
-    ref_pc = expected["pc"]
-
-    if rtl_pc != ref_pc:
-        print(
-            f"FAIL PC: "
-            f"RTL=0x{rtl_pc:08X} "
-            f"REF=0x{ref_pc:08X}"
-        )
-        errors += 1
-
-    for i in range(16):
-        rtl = rtl_regs[i]
-        ref = expected["registers"][i]
-
-        if rtl != ref:
-            print(
-                f"FAIL X{i}: "
-                f"RTL=0x{rtl:08X} "
-                f"REF=0x{ref:08X}"
-            )
-            errors += 1
-    if errors:
-        print(f"DIFFERENTIAL TEST FAILED: {errors} mismatch(es)")
-        sys.exit(1)
-
-    print("DIFFERENTIAL TEST PASSED")
-    print("RTL state matches Python reference model")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--expected", type=Path,
+                        default=Path("verification/generated/expected.json"))
+    parser.add_argument("--state", type=Path,
+                        default=Path("verification/generated/rtl_state.txt"))
+    args = parser.parse_args()
+    try:
+        expected = json.loads(args.expected.read_text())
+        actual = parse_rtl_state(args.state, len(expected["memory"]))
+        errors = compare(expected, actual)
+        if errors:
+            print("DIFFERENTIAL TEST FAILED\n" + "\n".join(errors))
+            return 1
+    except (ValueError, KeyError, OSError) as error:
+        print(f"DIFFERENTIAL TEST FAILED: {error}")
+        return 1
+    print(f"DIFFERENTIAL TEST PASSED: PC, 32 registers, {len(actual[2])} memory words")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

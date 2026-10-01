@@ -36,6 +36,9 @@ class TinyRV32Reference:
         self.dmem = [0] * memory_words
 
         self.steps = 0
+        self.trace = []
+        self._rd_event = None
+        self._store_event = None
 
         self.coverage = {
             "ADD": 0,
@@ -70,6 +73,7 @@ class TinyRV32Reference:
     def write_reg(self, rd, value):
         if rd != 0:
             self.regs[rd] = u32(value)
+            self._rd_event = (rd, u32(value))
 
         self.regs[0] = 0
 
@@ -102,9 +106,13 @@ class TinyRV32Reference:
             )
 
         self.dmem[index] = u32(value)
+        self._store_event = (u32(address), u32(value))
 
     def step(self):
         instr = self.fetch()
+        old_pc = self.pc
+        self._rd_event = None
+        self._store_event = None
 
         opcode = instr & 0x7F
         rd = (instr >> 7) & 0x1F
@@ -340,6 +348,14 @@ class TinyRV32Reference:
         self.pc = next_pc
         self.regs[0] = 0
         self.steps += 1
+        self.trace.append({
+            "pc": old_pc, "instruction": instr, "next_pc": next_pc,
+            "rd": self._rd_event[0] if self._rd_event else 0,
+            "rd_data": self._rd_event[1] if self._rd_event else 0,
+            "store": int(self._store_event is not None),
+            "address": self._store_event[0] if self._store_event else 0,
+            "store_data": self._store_event[1] if self._store_event else 0,
+        })
 
     def run(self, max_steps=100):
 
