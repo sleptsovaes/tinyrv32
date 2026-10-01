@@ -287,7 +287,7 @@ The historical LSU-adder RTL snapshot has not been recovered.
 Its runner is disabled until that source is available; the saved
 historical reports are retained.
 
-## Engineering Conclusions
+## Conclusions
 
 The pipeline boundary improved the instruction-to-address timing structure,
 but higher clock frequency did not produce a uniform workload speedup.
@@ -298,10 +298,3 @@ branches and JAL instructions incur enough bubbles to outweigh that benefit.
 
 The project demonstrates RTL design, automated verification, physical
 implementation and quantitative architectural comparison.
-
-## Further Work
-
-- Reduce redirect penalties and measure the area/timing cost.
-- Extend the supported instruction subset.
-- Evaluate register-file and memory implementation alternatives.
-- Recover the original RTL snapshot for the historical LSU experiment.
