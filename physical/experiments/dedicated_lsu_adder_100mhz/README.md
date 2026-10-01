@@ -59,3 +59,14 @@ more important timing bottleneck.
 
 For this reason, the dedicated LSU adder is not selected as the final
 RTL optimization.
+
+## Reproducibility status
+
+The original modified RTL snapshot has not been recovered from the
+inspected Git history or experiment materials.
+
+Commit `f8c4ac2` records documentation, constraints and timing reports.
+Its RTL tree is identical to baseline commit `6ec637b`.
+
+The saved reports are retained as historical observations. Reproducing
+this experiment requires recovering its original RTL snapshot.
