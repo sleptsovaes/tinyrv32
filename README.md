@@ -271,9 +271,21 @@ Equivalent scripts and experiment directories exist for 100, 105, 110,
 Constraints and saved reports are under
 `physical/experiments/two_stage_pipeline_*mhz/`.
 
-The physical runners copy the currently checked-out RTL into the ORFS
-workspace. Reproducing an earlier experiment requires its original RTL
-snapshot, constraints and tool environment.
+The baseline and pipeline runners export RTL from fixed Git commits,
+verified against the benchmark manifest. They also export `config.mk`
+and each experiment's SDC from a fixed configuration commit.
+
+The runners check the pinned ORFS revision and tracked modifications,
+and use a Docker image identified by its digest.
+
+Input revisions and hashes are recorded in
+[physical source pins](reproducibility/physical_sources.json).
+The environment inspected after the sweep is recorded in
+[physical environment](reproducibility/physical_environment.json).
+
+The historical LSU-adder RTL snapshot has not been recovered.
+Its runner is disabled until that source is available; the saved
+historical reports are retained.
 
 ## Engineering Conclusions
 
@@ -292,4 +304,4 @@ implementation and quantitative architectural comparison.
 - Reduce redirect penalties and measure the area/timing cost.
 - Extend the supported instruction subset.
 - Evaluate register-file and memory implementation alternatives.
-- Pin physical-flow tool versions and the Docker image digest.
+- Recover the original RTL snapshot for the historical LSU experiment.

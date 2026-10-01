@@ -1,0 +1,65 @@
+{
+  "scope": "Pinned rerun inputs; environment inspected after the sweep",
+  "flow_input_commit": "91a4b36c688a801eea857a48e4cc4d9744ce7816",
+  "config_sha256": "d7f9bb8822c32216357d6da7e1610b3466127e4bd77b93816ea0d5bb07107198",
+  "orfs_git_commit": "c63a606f9ccede13df8c82bbe31a8f6c6d323f6b",
+  "docker_image": "openroad/orfs@sha256:2e5bf6fe865e102ca2313aba1d849da50f5973bc91c4212a2f68e7d905a39c8f",
+  "rtl_sha256": {
+    "single_cycle": {
+      "rtl/alu.sv": "6d49bb89e7f764a50f71f34733acc30e9b25cafd33ad720c09ac425d7eb5ad42",
+      "rtl/control_unit.sv": "347935da80ee872a2c104b1ecb94b3c149a0d3040dada9994066e1736c5ecad9",
+      "rtl/cpu_core.sv": "bde795afaa09669381636a4cf3bd4d0bd07111bef634a1e37b34f8883e5e9b4c",
+      "rtl/imm_gen.sv": "0a223b8f02c592ab546c395e5e14715aaf99ad6b82f9b33a4546eb0f69ca100b",
+      "rtl/next_pc.sv": "29eaac1dde8bd70e7cd4e206716e2c8ededb68c884a529888f19c090c480cd17",
+      "rtl/pc.sv": "71c9b05e491a0caf5774225211c11d95c50517050bbdacd4ed4b1bb323cb7697",
+      "rtl/regfile.sv": "78ea8224cfc83810d7a06e5449c37087e72d018b6925e64d11686e78645948ea"
+    },
+    "pipeline": {
+      "rtl/alu.sv": "6d49bb89e7f764a50f71f34733acc30e9b25cafd33ad720c09ac425d7eb5ad42",
+      "rtl/control_unit.sv": "347935da80ee872a2c104b1ecb94b3c149a0d3040dada9994066e1736c5ecad9",
+      "rtl/cpu_core.sv": "6d5f0523479be508a6c2d350f07828ab7feb92bd4a839a6f0bfe183267080b20",
+      "rtl/imm_gen.sv": "0a223b8f02c592ab546c395e5e14715aaf99ad6b82f9b33a4546eb0f69ca100b",
+      "rtl/next_pc.sv": "29eaac1dde8bd70e7cd4e206716e2c8ededb68c884a529888f19c090c480cd17",
+      "rtl/pc.sv": "71c9b05e491a0caf5774225211c11d95c50517050bbdacd4ed4b1bb323cb7697",
+      "rtl/regfile.sv": "78ea8224cfc83810d7a06e5449c37087e72d018b6925e64d11686e78645948ea"
+    }
+  },
+  "experiments": {
+    "current_baseline_100mhz": {
+      "rtl_commit": "6ec637b161d326051904ab9ade76cc9e1d15b459",
+      "constraint_path": "physical/experiments/current_baseline_100mhz/constraint.sdc",
+      "constraint_sha256": "b276048e9a6bb5af2145395a68200faeacca94e8f750dc8f9b2a7546f02a735e"
+    },
+    "two_stage_pipeline_100mhz": {
+      "rtl_commit": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+      "constraint_path": "physical/experiments/two_stage_pipeline_100mhz/constraint.sdc",
+      "constraint_sha256": "b276048e9a6bb5af2145395a68200faeacca94e8f750dc8f9b2a7546f02a735e"
+    },
+    "two_stage_pipeline_105mhz": {
+      "rtl_commit": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+      "constraint_path": "physical/experiments/two_stage_pipeline_105mhz/constraint.sdc",
+      "constraint_sha256": "8c71709ff93d236e5eae601dbddcfc5ae8eec76e7846b6ba074f979b77fc4a8d"
+    },
+    "two_stage_pipeline_110mhz": {
+      "rtl_commit": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+      "constraint_path": "physical/experiments/two_stage_pipeline_110mhz/constraint.sdc",
+      "constraint_sha256": "1c44f211c2e1bf70ae4038903399f7283962625906de51784e716cb5dbb4eaff"
+    },
+    "two_stage_pipeline_113mhz": {
+      "rtl_commit": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+      "constraint_path": "physical/experiments/two_stage_pipeline_113mhz/constraint.sdc",
+      "constraint_sha256": "f8a0bf1e459e872cc90d84bb1d28f5a1d72d95538c3f37a0a38d32e66e49d1ea"
+    },
+    "two_stage_pipeline_114mhz": {
+      "rtl_commit": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+      "constraint_path": "physical/experiments/two_stage_pipeline_114mhz/constraint.sdc",
+      "constraint_sha256": "25e44225b7cff03e6229120b02465ad07e43dd0aa19128f48ec428f849580caf"
+    },
+    "two_stage_pipeline_115mhz": {
+      "rtl_commit": "7adbbe89e1d305c76d00afaf7a129d0430c45b28",
+      "constraint_path": "physical/experiments/two_stage_pipeline_115mhz/constraint.sdc",
+      "constraint_sha256": "a2f0750d28fe72433dbbc2c8557f3b0695d121612b318ec0a31d55a68481077b"
+    }
+  },
+  "lsu_source_status": "Original snapshot not recovered"
+}

@@ -10,13 +10,13 @@ FLOW_DIR="$ORFS_DIR/flow"
 DESIGN_DIR="$FLOW_DIR/designs/sky130hd/tinyrv32"
 RTL_DIR="$FLOW_DIR/designs/src/tinyrv32"
 
-VARIANT="two_stage_pipeline_110mhz"
-RTL_COMMIT="7adbbe89e1d305c76d00afaf7a129d0430c45b28"
+VARIANT="current_baseline_100mhz"
+RTL_COMMIT="6ec637b161d326051904ab9ade76cc9e1d15b459"
 FLOW_INPUT_COMMIT="91a4b36c688a801eea857a48e4cc4d9744ce7816"
 EXPECTED_ORFS_COMMIT="c63a606f9ccede13df8c82bbe31a8f6c6d323f6b"
 
-echo "TinyRV32 two-stage pipeline"
-echo "Target: 110 MHz"
+echo "TinyRV32 single-cycle baseline"
+echo "Target: 100 MHz"
 echo "Variant: $VARIANT"
 echo "RTL commit: $RTL_COMMIT"
 echo
@@ -70,4 +70,4 @@ docker run --rm -it \
     "
 
 echo
-echo "110 MHz implementation complete."
+echo "Baseline implementation complete."
