@@ -274,6 +274,7 @@ def main():
         "pc": cpu.pc,
         "steps": cpu.steps,
         "coverage": cpu.coverage,
+        "trace": cpu.trace,
     }
 
     with open(

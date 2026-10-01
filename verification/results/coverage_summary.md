@@ -23,4 +23,4 @@ Executed reference-model instructions: 5200
 | SW | 273 |
 | XOR | 269 |
 
-All generated programs matched the SystemVerilog RTL architectural state.
+All generated programs matched the SystemVerilog RTL architectural state: PC, all 32 integer registers and all 64 memory words. Ordered commit traces also matched the reference model.

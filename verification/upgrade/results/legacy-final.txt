@@ -1,0 +1,239 @@
+python3 -m compileall -q verification
+[PASS] Python verification syntax
+python3 verification/reference_model.py
+REFERENCE MODEL PASSED
+Executed instructions: 8
+python3 -m unittest discover -s verification -p 'test_*.py' -v
+test_bad_dump_is_rejected (test_checkers.StateCheckerTests.test_bad_dump_is_rejected) ... ok
+test_every_missing_field_is_rejected (test_checkers.StateCheckerTests.test_every_missing_field_is_rejected) ... ok
+test_every_state_field_is_checked (test_checkers.StateCheckerTests.test_every_state_field_is_checked) ... ok
+test_valid_state (test_checkers.StateCheckerTests.test_valid_state) ... ok
+test_each_trace_field_is_checked (test_checkers.TraceCheckerTests.test_each_trace_field_is_checked) ... ok
+test_missing_duplicate_and_reordered_commits (test_checkers.TraceCheckerTests.test_missing_duplicate_and_reordered_commits) ... ok
+test_transient_error_is_detected (test_checkers.TraceCheckerTests.test_transient_error_is_detected) ... ok
+test_unknown_trace (test_checkers.TraceCheckerTests.test_unknown_trace) ... ok
+test_integer_boundaries (test_rv32_reference.RV32OracleTests.test_integer_boundaries) ... ok
+test_jalr_clears_low_bit_and_traps_before_link_write (test_rv32_reference.RV32OracleTests.test_jalr_clears_low_bit_and_traps_before_link_write) ... ok
+test_little_endian_lanes (test_rv32_reference.RV32OracleTests.test_little_endian_lanes) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.108s
+
+OK
+UNIT TEST: alu
+VCD info: dumpfile alu.vcd opened for output.
+PASS: op=0 a=10 b=5 result=15
+PASS: op=1 a=10 b=5 result=5
+PASS: op=2 a=61680 b=4080 result=240
+PASS: op=3 a=61440 b=3840 result=65280
+PASS: op=4 a=43690 b=21845 result=65535
+PASS: op=5 a=1 b=4 result=16
+PASS: op=6 a=16 b=2 result=4
+PASS: op=7 a=5 b=10 result=1
+PASS: op=7 a=10 b=5 result=0
+PASS: op=7 a=4294967291 b=3 result=1
+ALU tests finished
+tb/alu_tb.sv:66: $finish called at 10000 (1ps)
+[PASS] alu
+
+UNIT TEST: regfile
+VCD info: dumpfile regfile.vcd opened for output.
+PASS: x0 is zero
+PASS: x5 = 123
+PASS: x10 = deadbeef
+PASS: write to x0 ignored
+Register file tests finished
+tb/regfile_tb.sv:97: $finish called at 35000 (1ps)
+[PASS] regfile
+
+UNIT TEST: imm_gen
+VCD info: dumpfile imm_gen.vcd opened for output.
+PASS: instr=ffb10093 imm=fffffffb
+PASS: instr=0101a203 imm=00000010
+PASS: instr=fe532c23 imm=fffffff8
+PASS: instr=fe208ee3 imm=fffffffc
+PASS: instr=014000ef imm=00000014
+PASS: instr=123450b7 imm=12345000
+Immediate Generator tests finished
+tb/imm_gen_tb.sv:95: $finish called at 6000 (1ps)
+[PASS] imm_gen
+
+UNIT TEST: control_unit
+VCD info: dumpfile control_unit.vcd opened for output.
+PASS opcode=0110011 funct3=000 alu_op=0
+PASS opcode=0110011 funct3=000 alu_op=1
+PASS opcode=0110011 funct3=111 alu_op=2
+PASS opcode=0110011 funct3=110 alu_op=3
+PASS opcode=0110011 funct3=100 alu_op=4
+PASS opcode=0110011 funct3=001 alu_op=5
+PASS opcode=0110011 funct3=101 alu_op=6
+PASS opcode=0110011 funct3=010 alu_op=7
+PASS opcode=0010011 funct3=000 alu_op=0
+PASS opcode=0000011 funct3=010 alu_op=0
+PASS opcode=0100011 funct3=010 alu_op=0
+PASS opcode=1100011 funct3=000 alu_op=1
+PASS opcode=1100011 funct3=001 alu_op=1
+PASS opcode=1101111 funct3=000 alu_op=0
+Control Unit tests finished
+tb/control_unit_tb.sv:249: $finish called at 14000 (1ps)
+[PASS] control_unit
+
+UNIT TEST: pc
+VCD info: dumpfile pc.vcd opened for output.
+PASS: normal PC = 8
+PASS: BEQ taken, PC = 24
+PASS: BNE not taken, PC = 28
+PASS: BNE taken, PC = 40
+PASS: JAL, PC = 60
+Program Counter tests finished
+tb/pc_tb.sv:117: $finish called at 70000 (1ps)
+[PASS] pc
+
+CPU INTEGRATION REGRESSION
+/workspace/scratch/33a06df53ca5/toolchain/root/usr/bin/vvp build/cpu_core_test \
+    | tee build/cpu_core.log
+TEST: register write blocked during reset
+TEST: memory write blocked during reset
+
+CPU REGRESSION PASSED
+Two-stage pipeline branch flush PASSED
+
+tb/cpu_core_tb.sv:405: $finish called at 466000 (1ps)
+[PASS] CPU regression
+========================================
+RANDOMIZED DIFFERENTIAL VERIFICATION
+========================================
+python3 verification/run_differential.py
+Running 100 differential tests...
+
+[  1/100] seed=0   PASS
+[  2/100] seed=1   PASS
+[  3/100] seed=2   PASS
+[  4/100] seed=3   PASS
+[  5/100] seed=4   PASS
+[  6/100] seed=5   PASS
+[  7/100] seed=6   PASS
+[  8/100] seed=7   PASS
+[  9/100] seed=8   PASS
+[ 10/100] seed=9   PASS
+[ 11/100] seed=10  PASS
+[ 12/100] seed=11  PASS
+[ 13/100] seed=12  PASS
+[ 14/100] seed=13  PASS
+[ 15/100] seed=14  PASS
+[ 16/100] seed=15  PASS
+[ 17/100] seed=16  PASS
+[ 18/100] seed=17  PASS
+[ 19/100] seed=18  PASS
+[ 20/100] seed=19  PASS
+[ 21/100] seed=20  PASS
+[ 22/100] seed=21  PASS
+[ 23/100] seed=22  PASS
+[ 24/100] seed=23  PASS
+[ 25/100] seed=24  PASS
+[ 26/100] seed=25  PASS
+[ 27/100] seed=26  PASS
+[ 28/100] seed=27  PASS
+[ 29/100] seed=28  PASS
+[ 30/100] seed=29  PASS
+[ 31/100] seed=30  PASS
+[ 32/100] seed=31  PASS
+[ 33/100] seed=32  PASS
+[ 34/100] seed=33  PASS
+[ 35/100] seed=34  PASS
+[ 36/100] seed=35  PASS
+[ 37/100] seed=36  PASS
+[ 38/100] seed=37  PASS
+[ 39/100] seed=38  PASS
+[ 40/100] seed=39  PASS
+[ 41/100] seed=40  PASS
+[ 42/100] seed=41  PASS
+[ 43/100] seed=42  PASS
+[ 44/100] seed=43  PASS
+[ 45/100] seed=44  PASS
+[ 46/100] seed=45  PASS
+[ 47/100] seed=46  PASS
+[ 48/100] seed=47  PASS
+[ 49/100] seed=48  PASS
+[ 50/100] seed=49  PASS
+[ 51/100] seed=50  PASS
+[ 52/100] seed=51  PASS
+[ 53/100] seed=52  PASS
+[ 54/100] seed=53  PASS
+[ 55/100] seed=54  PASS
+[ 56/100] seed=55  PASS
+[ 57/100] seed=56  PASS
+[ 58/100] seed=57  PASS
+[ 59/100] seed=58  PASS
+[ 60/100] seed=59  PASS
+[ 61/100] seed=60  PASS
+[ 62/100] seed=61  PASS
+[ 63/100] seed=62  PASS
+[ 64/100] seed=63  PASS
+[ 65/100] seed=64  PASS
+[ 66/100] seed=65  PASS
+[ 67/100] seed=66  PASS
+[ 68/100] seed=67  PASS
+[ 69/100] seed=68  PASS
+[ 70/100] seed=69  PASS
+[ 71/100] seed=70  PASS
+[ 72/100] seed=71  PASS
+[ 73/100] seed=72  PASS
+[ 74/100] seed=73  PASS
+[ 75/100] seed=74  PASS
+[ 76/100] seed=75  PASS
+[ 77/100] seed=76  PASS
+[ 78/100] seed=77  PASS
+[ 79/100] seed=78  PASS
+[ 80/100] seed=79  PASS
+[ 81/100] seed=80  PASS
+[ 82/100] seed=81  PASS
+[ 83/100] seed=82  PASS
+[ 84/100] seed=83  PASS
+[ 85/100] seed=84  PASS
+[ 86/100] seed=85  PASS
+[ 87/100] seed=86  PASS
+[ 88/100] seed=87  PASS
+[ 89/100] seed=88  PASS
+[ 90/100] seed=89  PASS
+[ 91/100] seed=90  PASS
+[ 92/100] seed=91  PASS
+[ 93/100] seed=92  PASS
+[ 94/100] seed=93  PASS
+[ 95/100] seed=94  PASS
+[ 96/100] seed=95  PASS
+[ 97/100] seed=96  PASS
+[ 98/100] seed=97  PASS
+[ 99/100] seed=98  PASS
+[100/100] seed=99  PASS
+
+========================================
+ALL 100 DIFFERENTIAL TESTS PASSED
+========================================
+
+Architectural coverage:
+
+ADD              278
+ADDI             1994
+AND              278
+BEQ_not_taken    100
+BEQ_taken        100
+BNE_not_taken    100
+BNE_taken        100
+JAL              100
+LW               258
+OR               260
+SLL              252
+SLT              281
+SRL              295
+SUB              262
+SW               273
+XOR              269
+
+Executed instructions: 5200
+
+Coverage report written to: verification/results/coverage_summary.md
+
+========================================
+TINYRV32 FUNCTIONAL VERIFICATION PASSED
+========================================

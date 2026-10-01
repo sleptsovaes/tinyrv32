@@ -1,4 +1,6 @@
 import json
+import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -10,9 +12,10 @@ NUM_TESTS = 100
 def run(cmd):
     return subprocess.run(
         cmd,
-        shell=True,
+        shell=False,
         text=True,
-        capture_output=True
+        capture_output=True,
+        timeout=60
     )
 
 
@@ -30,8 +33,7 @@ def main():
         # -----------------------------------------------------
 
         gen = run(
-            f"python3 verification/generate_program.py "
-            f"--seed {seed}"
+            [sys.executable, "verification/generate_program.py", "--seed", str(seed)]
         )
 
         if gen.returncode != 0:
@@ -44,7 +46,7 @@ def main():
         # Run RTL simulation
         # -----------------------------------------------------
 
-        sim = run("vvp diff_test")
+        sim = run(shlex.split(os.getenv("VVP", "vvp")) + ["diff_test"])
 
         if sim.returncode != 0:
             print(f"[SEED {seed}] RTL SIMULATION FAILED")
@@ -57,7 +59,7 @@ def main():
         # -----------------------------------------------------
 
         compare = run(
-            "python3 verification/compare_state.py"
+            [sys.executable, "verification/compare_state.py"]
         )
 
         if compare.returncode != 0:
@@ -77,6 +79,13 @@ def main():
                 "python3 verification/compare_state.py"
             )
 
+            sys.exit(1)
+
+        trace = run([sys.executable, "verification/compare_trace.py"])
+        if trace.returncode:
+            print(f"[SEED {seed}] COMMIT TRACE MISMATCH")
+            print(trace.stdout)
+            print(trace.stderr)
             sys.exit(1)
 
         # -----------------------------------------------------
@@ -185,7 +194,9 @@ def main():
 
         f.write(
             "All generated programs matched the "
-            "SystemVerilog RTL architectural state.\n"
+            "SystemVerilog RTL architectural state: PC, all 32 integer "
+            "registers and all 64 memory words. Ordered commit traces "
+            "also matched the reference model.\n"
         )
 
     print()
