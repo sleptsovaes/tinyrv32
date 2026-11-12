@@ -1,8 +1,7 @@
 # TinyRV32 performance benchmark
 
-This package adds `tb/performance_tb.sv` and `verification/run_performance.py`.
-Extract it into the TinyRV32 repository root, with the `two-stage-pipeline`
-branch checked out.
+The historical-core benchmark uses `tb/performance_tb.sv` and
+`verification/run_performance.py`, both included on `main`.
 
 Requirements: Python 3.10+, Git, Icarus Verilog (`iverilog` and `vvp`).
 

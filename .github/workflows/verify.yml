@@ -1,0 +1,28 @@
+name: Verify TinyRV32
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  simulation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y iverilog gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf yosys
+      - name: Historical core and checker tests
+        run: make test
+      - name: RV32 execution core, memory waits, C and serial UART
+        run: make upgrade
+      - name: Bounded safety and structural synthesis
+        run: make formal synth-upgrade
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-results
+          path: |
+            build/upgrade/results.*
+            build/upgrade/soc_uart.log
+            build/formal/
+            build/synthesis/results.json
+            build/synthesis/*.log
+          if-no-files-found: warn

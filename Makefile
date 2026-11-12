@@ -7,6 +7,9 @@ SHELL := /bin/bash
 IVERILOG ?= iverilog
 VVP      ?= vvp
 PYTHON   ?= python3
+RISCV_PREFIX ?= riscv64-unknown-elf-
+YOSYS    ?= yosys
+export IVERILOG VVP RISCV_PREFIX YOSYS
 
 IVFLAGS := -g2012
 
@@ -35,6 +38,11 @@ UNIT_BINS := $(addprefix $(BUILD_DIR)/,$(addsuffix _test,$(UNIT_NAMES)))
 	help \
 	check \
 	checker \
+	checkers \
+	upgrade \
+	upgrade-quick \
+	formal \
+	synth-upgrade \
 	reference \
 	unit \
 	regression \
@@ -57,6 +65,10 @@ help:
 > @echo "  make regression    - run integrated CPU regression"
 > @echo "  make differential  - run 100 randomized differential tests"
 > @echo "  make test          - run complete functional verification"
+> @echo "  make upgrade       - test expanded core, memory waits, C and UART"
+> @echo "  make upgrade-quick - smaller expanded-core smoke test"
+> @echo "  make formal        - bounded safety checks for both predictor modes"
+> @echo "  make synth-upgrade - generic synthesis/check of expanded core and SoC"
 > @echo "  make clean         - remove generated simulation artifacts"
 > @echo "  make physical      - run SKY130 RTL-to-GDS flow with ORFS"
 
@@ -71,15 +83,7 @@ verification/generated:
 # Python verification sanity check
 
 check:
-> $(PYTHON) -m py_compile \
-> 	verification/reference_model.py \
-> 	verification/generate_program.py \
-> 	verification/compare_state.py \
-> 	verification/compare_trace.py \
-> 	verification/test_state_checker.py \
-> 	verification/test_trace_checker.py \
-> 	verification/test_trace_regression.py \
-> 	verification/run_differential.py
+> $(PYTHON) -m compileall -q verification
 > @echo "[PASS] Python verification syntax"
 
 
@@ -88,8 +92,21 @@ check:
 reference: check
 > $(PYTHON) verification/reference_model.py
 
-checker: check
+checker checkers: check
 > $(PYTHON) -m unittest discover -s verification -p 'test_*checker.py' -v
+> $(PYTHON) -m unittest discover -s verification -p 'test_rv32_reference.py' -v
+
+upgrade: checkers
+> $(PYTHON) verification/run_upgrade.py
+
+upgrade-quick: checkers
+> $(PYTHON) verification/run_upgrade.py --quick --random-programs 10 --output build/upgrade-quick
+
+formal:
+> $(PYTHON) verification/run_safety.py --depth 6
+
+synth-upgrade:
+> $(PYTHON) verification/run_synthesis.py
 
 
 # RTL unit tests
