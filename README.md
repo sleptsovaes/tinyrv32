@@ -6,6 +6,13 @@ two-stage Fetch/Execute pipeline and an OpenROAD/SKY130 RTL-to-GDSII flow.
 The project compares architectural changes through functional verification,
 post-route timing analysis and measured instruction-cycle counts.
 
+This page documents the historical `cpu_core` experiment. The separate
+[`portfolio-upgrade` branch](https://github.com/sleptsovaes/tinyrv32/tree/portfolio-upgrade)
+contains the latency-tolerant `rv32_core`, prediction, C firmware and UART SoC;
+its scope and reproduction commands are in
+[`docs/RV32_UPGRADE.md`](https://github.com/sleptsovaes/tinyrv32/blob/portfolio-upgrade/docs/RV32_UPGRADE.md).
+The historical 113 MHz physical result does not apply to that expanded core.
+
 ## Main Results
 
 - Functional verification includes RTL unit tests, integrated CPU regression,
@@ -89,6 +96,8 @@ The completed checks include:
 - independent reference-model checks;
 - 100 randomized differential programs;
 - PC, register and data-memory architectural-state comparison;
+- checker fault-detection tests covering every state field, incomplete or
+  malformed dumps, and nonzero command exit status for mismatches;
 - six performance workloads with expected state and instruction-count checks.
 
 From the current pipeline checkout:
@@ -96,6 +105,11 @@ From the current pipeline checkout:
 ```bash
 make test
 ```
+
+The historical differential testbench initializes the register file to match
+the Python model's zero initial state. The RTL itself does not reset the
+register file. Every dump must contain PC, all 32 registers and all 64
+data-memory words; missing or malformed fields cause the comparison to fail.
 
 The performance harness additionally compares all integer registers and
 data-memory words between the single-cycle and pipeline RTL snapshots.

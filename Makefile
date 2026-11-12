@@ -34,6 +34,7 @@ UNIT_BINS := $(addprefix $(BUILD_DIR)/,$(addsuffix _test,$(UNIT_NAMES)))
 	versions \
 	help \
 	check \
+	checker \
 	reference \
 	unit \
 	regression \
@@ -48,6 +49,7 @@ help:
 > @echo "TinyRV32 verification targets"
 > @echo
 > @echo "  make check         - syntax-check Python verification tools"
+> @echo "  make checker       - verify state-checker fault detection"
 > @echo "  make reference     - run Python architectural model self-test"
 > @echo "  make unit          - run RTL unit testbenches"
 > @echo "  make regression    - run integrated CPU regression"
@@ -71,6 +73,7 @@ check:
 > 	verification/reference_model.py \
 > 	verification/generate_program.py \
 > 	verification/compare_state.py \
+> 	verification/test_state_checker.py \
 > 	verification/run_differential.py
 > @echo "[PASS] Python verification syntax"
 
@@ -79,6 +82,9 @@ check:
 
 reference: check
 > $(PYTHON) verification/reference_model.py
+
+checker: check
+> $(PYTHON) -m unittest discover -s verification -p 'test_state_checker.py' -v
 
 
 # RTL unit tests
@@ -134,7 +140,7 @@ differential: diff_test
 
 # Complete functional verification
 
-test: reference unit regression differential
+test: reference checker unit regression differential
 > @echo
 > @echo "========================================"
 > @echo "TINYRV32 FUNCTIONAL VERIFICATION PASSED"

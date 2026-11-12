@@ -70,6 +70,11 @@ module differential_tb;
         clk   = 0;
         reset = 1;
 
+        // The reference model starts with zero registers. The historical RTL
+        // does not reset the register file, so establish that initial state
+        // explicitly in this testbench; this is not a hardware-reset claim.
+        for (i = 1; i < 32; i = i + 1)
+            dut.rf.regs[i] = 32'd0;
 
 
         for (i = 0; i < 64; i = i + 1) begin
@@ -108,7 +113,7 @@ module differential_tb;
         );
 
 
-        for (i = 0; i < 16; i = i + 1) begin
+        for (i = 0; i < 32; i = i + 1) begin
 
             if (i == 0) begin
 
