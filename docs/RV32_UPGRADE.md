@@ -3,13 +3,20 @@
 The upgrade adds a separately verified execution core, a memory interface with
 wait states, compiled C firmware, a static branch-prediction experiment and a
 small RAM/UART SoC. The historical `cpu_core.sv` and its physical measurements
-remain a separate experiment.
+remain a [separate experiment](HISTORICAL_CORE.md).
 
 ## Reproduce the checks
 
 Required: Python 3, Make and Icarus Verilog. The firmware checks additionally
 require GNU RISC-V GCC and binutils with an RV32I/ILP32 target. Yosys is needed
 for the optional bounded safety and structural synthesis checks.
+
+The saved regression used Icarus Verilog 12.0 and GCC 13.2; tool versions
+and source hashes are recorded in each JSON report. The bounded SAT script
+was verified with Yosys 0.33, also recorded in the saved safety report.
+Yosys 0.52 introduces `$check` cells that this SAT script does not handle;
+use the tested version for `make formal`. Generic synthesis was also rerun
+with Yosys 0.52. These tool checks do not establish mapped PPA.
 
 On Ubuntu 24.04:
 
@@ -110,10 +117,14 @@ can complete in the same cycle; registered memories return a later completion.
 
 The original differential checker now rejects missing, duplicate, malformed
 and unknown fields and checks **all 32 registers and all 64 memory words**.
-It additionally checks the ordered commit stream. Eleven checker/oracle unit
-tests include mutations of every state field, transient trace corruption,
+It additionally checks ordered commits and actual external memory writes.
+`make checker` runs 18 state/trace checker tests and three reference-model
+tests, including mutations of every state field, transient trace corruption,
 missing/duplicate/reordered commits and hand-calculated arithmetic/byte-order
-goldens. The original 100-program regression also passes.
+goldens. Seven directed historical-core RTL tests include errors masked by
+later writes, an invalid-slot write and timeout detection. The original
+100-program regression also passes. See the
+[historical verification contract](HISTORICAL_CORE.md#functional-verification).
 
 The upgraded core uses a separate Python RV32 reference model. Every run checks
 all 32 registers, all 4096 RAM words, the fault PC and cause, and every ordered

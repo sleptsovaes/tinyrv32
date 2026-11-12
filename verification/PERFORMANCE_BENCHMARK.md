@@ -7,8 +7,9 @@ Requirements: Python 3.10+, Git, Icarus Verilog (`iverilog` and `vvp`).
 
 ## Run
 
+Run from the repository root with the baseline commit available in Git history.
+
 ```bash
-cd ~/tinyrv32
 python3 verification/run_performance.py \
   --baseline 6ec637b \
   --single-mhz 100 \
@@ -128,17 +129,22 @@ python3 verification/run_performance.py \
   --output build/performance_100mhz
 ```
 
-## Validation status before delivery
+## Validation and saved evidence
 
 Python syntax and the binary-program/closed-form-oracle self-tests passed for
 1, 128, and 256 iterations. Mutation checks verified that state and count
 errors are rejected. A separate binary instruction decoder exercised the
 generated programs, including backward BNE/JAL offsets and wrong-path skips.
 
-HDL compilation and simulation were not run in the preparation environment,
-which has no Icarus Verilog installed. The first command above performs those
-checks against the actual repository RTL and emits no final result table on
-failure.
+All six workloads subsequently passed HDL compilation, RTL simulation,
+closed-form state/count checks and full architectural-state comparison.
+The [saved results](performance/results/results.md) and
+[source/tool manifest](performance/results/manifest.json) preserve that run;
+they are not regenerated merely by editing this guide. The six workloads
+also passed a rerun of the consolidated source on 12 November 2026.
+
+Run the command above to produce current logs and a fresh manifest under
+`build/performance/`. It emits no final result table on failure.
 
 To run only the program self-test, without Git or an HDL simulator:
 
