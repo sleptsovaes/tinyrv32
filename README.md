@@ -1,12 +1,44 @@
 # TinyRV32
 
-A compact SystemVerilog processor implementing an RV32I subset, with a
-two-stage Fetch/Execute pipeline and an OpenROAD/SKY130 RTL-to-GDSII flow.
+A compact SystemVerilog processor project with two separately measured cores:
+the historical RV32I-subset pipeline, and a latency-tolerant RV32 execution
+core with compiled C workloads, static prediction and a RAM/UART SoC.
 
 The project compares architectural changes through functional verification,
 post-route timing analysis and measured instruction-cycle counts.
 
-## Main Results
+## RV32 execution-core upgrade
+
+The new `rv32_core.sv` executes 38 normally completing RV32I operations and
+stops precisely on ECALL, EBREAK, illegal encodings and misaligned accesses.
+Its memory interfaces support zero-wait and registered/delayed completion.
+There are no privileged CSRs, interrupt handling or ISA-certification claims.
+
+- **978 core simulations passed:** both predictor modes, four memory modes,
+  100 random programs, directed ISA/fault/reset checks and compiled C.
+- Every run compares **ordered commits, all 32 registers and all 4096 RAM
+  words** with a Python reference model.
+- Freestanding GCC firmware checks CRC32, sorting, a byte buffer and signed
+  halfword accesses. The SoC test decodes **19 bytes from the actual UART TX
+  waveform**: `CRC SORT BUFFER OK` followed by a newline.
+- Static backward-taken/forward-not-taken prediction reduces compiled-C
+  cycles from **1975 to 1784 (9.67%)** with zero waits. The taken-branch loop
+  falls from **389 to 263 cycles (32.39%)**.
+- Checker mutation tests, short bounded protocol checks, structural synthesis
+  scripts and a GitHub Actions workflow make the checks reproducible.
+
+```bash
+make test                  # Historical core + checker/oracle unit tests
+make upgrade               # New core + compiled C + serial UART
+make formal synth-upgrade  # Requires Yosys; bounded/structural checks
+```
+
+See [architecture, bus contract, verification and limitations](docs/RV32_UPGRADE.md)
+and [recorded upgrade results](verification/upgrade/results/results.md).
+New frequency, mapped area and FPGA-board results remain unmeasured.
+**The 113 MHz results below apply only to the historical `cpu_core.sv`.**
+
+## Historical Core Results
 
 - Functional verification includes RTL unit tests, integrated CPU regression,
   wrong-path flush checks and 100 randomized differential programs.
@@ -22,9 +54,9 @@ post-route timing analysis and measured instruction-cycle counts.
 - Taken-branch and JAL workloads took approximately **32% more time** because
   each redirect introduces a pipeline bubble.
 
-## Architecture
+## Historical Core Architecture
 
-The current core has two stages:
+The historical `cpu_core.sv` has two stages:
 
 1. **Fetch:** present the fetch PC to the instruction-memory interface.
 2. **Execute:** decode the registered instruction, read operands, execute,
@@ -63,7 +95,7 @@ without wait states.
 | Memory | LW, SW |
 | Control flow | BEQ, BNE, JAL |
 
-TinyRV32 implements this subset rather than the complete RV32I ISA.
+The historical core implements this subset; the expanded `rv32_core.sv` has the broader scope described above.
 
 ### RTL Modules
 
@@ -77,7 +109,7 @@ TinyRV32 implements this subset rather than the complete RV32I ISA.
 | `next_pc.sv` | Sequential and redirected PC selection |
 | `pc.sv` | Program-counter module used by the single-cycle implementation |
 
-## Functional Verification
+## Historical Core Functional Verification
 
 Verification uses Icarus Verilog and an independent Python reference model.
 
@@ -89,6 +121,11 @@ The completed checks include:
 - independent reference-model checks;
 - 100 randomized differential programs;
 - PC, register and data-memory architectural-state comparison;
+- ordered instruction-commit and actual memory-write comparison;
+- checker fault-detection tests covering every state field, incomplete or
+  malformed dumps, and nonzero command exit status for mismatches;
+- RTL fault injection for transient register errors and missing/corrupt stores
+  that are overwritten later and leave the correct final state;
 - six performance workloads with expected state and instruction-count checks.
 
 From the current pipeline checkout:
@@ -97,10 +134,37 @@ From the current pipeline checkout:
 make test
 ```
 
+The historical differential testbench initializes the register file to match
+the Python model's zero initial state. The RTL itself does not reset the
+register file. Every dump must contain PC, all 32 registers and all 64
+data-memory words; missing or malformed fields cause the comparison to fail.
+
+Every randomized run also compares two ordered logs against the reference:
+
+| Log | Recorded fields | Detects |
+|---|---|---|
+| Instruction commits | PC, instruction, next PC, register destination/value, store flag/address/data | Missing, extra or reordered instructions and incorrect intermediate results |
+| Actual memory writes | Executing PC, external write address and data | Missing, extra, reordered or corrupted writes even when the commit log is correct |
+
+The write log is sampled from the data-memory interface at the same clock
+edge that updates the testbench RAM. This historical interface has no wait
+states, and stores write a full 32-bit word. Invalid execute slots and reset
+must not produce register or memory writes.
+
+Pipeline bubbles are excluded from the commit log. `JAL x0, 0` is a test
+termination marker in both the RTL harness and the reference; it is excluded
+from the trace. The harness stops there instead of taking a fixed-cycle
+snapshot, and fails if the program does not reach it within its cycle limit.
+
+`make checker` runs 18 state/trace checker tests and three RV32 reference-model tests. `make trace-regression` runs
+seven isolated RTL tests, including x30/x31 and x0 behavior, three errors
+masked by later writes, an invalid-slot write and a nonterminating program.
+These targets are included in `make test`.
+
 The performance harness additionally compares all integer registers and
 data-memory words between the single-cycle and pipeline RTL snapshots.
 
-## Physical Implementation
+## Historical Core Physical Implementation
 
 The implementation flow uses Yosys, OpenROAD Flow Scripts, OpenSTA and the
 SKY130 HD standard-cell library.
@@ -108,7 +172,7 @@ SKY130 HD standard-cell library.
 RTL synthesis is followed by floorplanning, placement, clock-tree synthesis,
 routing, static timing analysis and final GDSII generation.
 
-### Architecture Comparison
+### Historical Core Architecture Comparison
 
 These operating points use a 10 ns or 8.8496 ns clock period with 2 ns input
 and output delays.
@@ -177,7 +241,7 @@ The following images document the earlier single-cycle implementation:
 
 ![Single-cycle routed layout detail](docs/routed_detail.png)
 
-## Measured Workload Performance
+## Historical Core Measured Workload Performance
 
 Both RTL implementations execute identical programs.
 
@@ -287,7 +351,7 @@ The historical LSU-adder RTL snapshot has not been recovered.
 Its runner is disabled until that source is available; the saved
 historical reports are retained.
 
-## Conclusions
+## Engineering Conclusions
 
 The pipeline boundary improved the instruction-to-address timing structure,
 but higher clock frequency did not produce a uniform workload speedup.

@@ -1,0 +1,29 @@
+{
+  "executed_at_utc": "2026-10-01T14:30:59.322733+00:00",
+  "method": "bounded SAT safety",
+  "depth": 6,
+  "unbounded_proof": false,
+  "assumptions": [
+    "initial state zero",
+    "reset at first sampled cycle"
+  ],
+  "unconstrained_inputs": [
+    "instruction/data responses",
+    "ready",
+    "subsequent reset"
+  ],
+  "core_sha256": "bb4523343989f6833390fd13c2601cfcec3f5822422491b25534e4bf38402a7e",
+  "tool": "Yosys 0.33 (git sha1 2584903a060)",
+  "runs": [
+    {
+      "prediction": 0,
+      "passed": true,
+      "command": "read_verilog -formal -sv rtl/rv32_core.sv; chparam -set STATIC_PREDICT 0 rv32_core; prep -top rv32_core; flatten; memory_map; opt; sat -seq 6 -set-init-zero -set-assumes -prove-asserts -verify -timeout 60"
+    },
+    {
+      "prediction": 1,
+      "passed": true,
+      "command": "read_verilog -formal -sv rtl/rv32_core.sv; chparam -set STATIC_PREDICT 1 rv32_core; prep -top rv32_core; flatten; memory_map; opt; sat -seq 6 -set-init-zero -set-assumes -prove-asserts -verify -timeout 60"
+    }
+  ]
+}
