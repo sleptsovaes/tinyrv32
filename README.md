@@ -96,8 +96,11 @@ The completed checks include:
 - independent reference-model checks;
 - 100 randomized differential programs;
 - PC, register and data-memory architectural-state comparison;
+- ordered instruction-commit and actual memory-write comparison;
 - checker fault-detection tests covering every state field, incomplete or
   malformed dumps, and nonzero command exit status for mismatches;
+- RTL fault injection for transient register errors and missing/corrupt stores
+  that are overwritten later and leave the correct final state;
 - six performance workloads with expected state and instruction-count checks.
 
 From the current pipeline checkout:
@@ -110,6 +113,28 @@ The historical differential testbench initializes the register file to match
 the Python model's zero initial state. The RTL itself does not reset the
 register file. Every dump must contain PC, all 32 registers and all 64
 data-memory words; missing or malformed fields cause the comparison to fail.
+
+Every randomized run also compares two ordered logs against the reference:
+
+| Log | Recorded fields | Detects |
+|---|---|---|
+| Instruction commits | PC, instruction, next PC, register destination/value, store flag/address/data | Missing, extra or reordered instructions and incorrect intermediate results |
+| Actual memory writes | Executing PC, external write address and data | Missing, extra, reordered or corrupted writes even when the commit log is correct |
+
+The write log is sampled from the data-memory interface at the same clock
+edge that updates the testbench RAM. This historical interface has no wait
+states, and stores write a full 32-bit word. Invalid execute slots and reset
+must not produce register or memory writes.
+
+Pipeline bubbles are excluded from the commit log. `JAL x0, 0` is a test
+termination marker in both the RTL harness and the reference; it is excluded
+from the trace. The harness stops there instead of taking a fixed-cycle
+snapshot, and fails if the program does not reach it within its cycle limit.
+
+`make checker` runs 18 state/trace checker tests. `make trace-regression` runs
+seven isolated RTL tests, including x30/x31 and x0 behavior, three errors
+masked by later writes, an invalid-slot write and a nonterminating program.
+These targets are included in `make test`.
 
 The performance harness additionally compares all integer registers and
 data-memory words between the single-cycle and pipeline RTL snapshots.
